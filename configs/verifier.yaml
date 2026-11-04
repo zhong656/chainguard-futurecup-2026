@@ -1,0 +1,47 @@
+# ============================================================
+# configs/verifier.yaml —— 评分卡权重与判定阈值（占位）
+# ------------------------------------------------------------
+# 用途：定义三层验证的开关、评分维度与权重、通过阈值、Self-Loop 触发条件。
+#      是赛题考察点 5「Self-Loop」与 6「结果验证」的主要可展示证据。
+# 落地时间：阶段 3（11/13 规则验证器 + 评分卡，11/15 LoopController）。
+# 验收口径：故意造错（假引用 / 数值不一致 / 缺章节）能被 100% 检出。
+# ============================================================
+
+# layers：三层验证开关（L1 确定性兜底 → L2 模型交叉 → L3 双路比对）
+# layers:
+#   rules: true        # L1 规则验证器：引用真实性 / 数值一致性 / 章节完整性 / Schema
+#   llm_judge: true    # L2 独立 Verifier Agent（提示词与温度须与 writer 不同）
+#   cross_check: true  # L3 双路检索比对：同一结论用两条检索路径验证
+
+# scorecard：评分维度与权重（合计必须为 1.0）
+# scorecard:
+#   weights:
+#     citation: <待定>     # 引用可回溯比例
+#     consistency: <待定>  # 数值与参数表一致性
+#     coverage: <待定>     # 章节完整性
+#     logic: <待定>        # 论述与结论自洽
+#     format: <待定>       # 模板与 Schema 合规
+#   pass_threshold: <待定>   # 通过阈值，未达即触发 Self-Loop
+#   max_rounds: 3            # 硬上限，防止成本失控
+#   convergence:             # 收敛判据
+#     stop_if_no_gain_rounds: 2   # 连续两轮无提升即终止并给出原因
+
+# rules：L1 规则验证器细则
+# rules:
+#   citation:
+#     require_source_id: true        # 段落无 source_id 直接判不合格
+#     verify_quote_exists: true      # 引用原文必须能在语料中检索到
+#   numeric:
+#     tolerance: <待定>              # 数值比对容差
+#   sections:
+#     required: [现状痛点, 技术选型, 数据方案, 实施阶段, 成本与ROI, 风险与合规]
+#   schema:
+#     strict: true                   # 输出必须匹配 Pydantic 模型
+
+# feedback：失败样本落库与离线优化（对应「反馈优化」证据）
+# feedback:
+#   db_path: feedback.db             # 不入库（.gitignore 已忽略 *.db）
+#   types: [citation_hallucination, numeric_mismatch, missing_section, timeout]
+#   ab_compare:
+#     enabled: true
+#     report_path: outputs/ab_report.md
