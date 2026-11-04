@@ -117,7 +117,7 @@ chainguard-futurecup-2026/
 
 > 红线：不压到 11/20 深夜提交；11/19 完成全部材料，11/20 只做上传与复核。
 
-> **先读这里**：[交接公告](docs/HANDOFF.md) · [接口口径](docs/api.md) · [已定决定](docs/decisions.md) · [给 AI 的提示词](docs/AGENT-PROMPT.md) —— 当前状态、拉取方式、四个已踩过的坑
+> **先读这里**：[交接公告](docs/HANDOFF.md) · [接口口径](docs/api.md) · [已定决定](docs/decisions.md) · [给 AI 的提示词](docs/AGENT-PROMPT.md) · [交付计划](docs/PLAN-DELIVERY.md) —— 当前状态、拉取方式、四个已踩过的坑
 
 ## 7. 协作与安全
 
