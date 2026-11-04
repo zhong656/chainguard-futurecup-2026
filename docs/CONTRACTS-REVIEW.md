@@ -28,18 +28,18 @@
 
 | 问题 | 现状（我的默认） | 你的决定 |
 | --- | --- | --- |
-| `provider` 是否就这四档 | `deepseek/qwen/ollama/mock` | |
-| `usage` 只记 token 够不够，要不要记成本 | 只 `tokens_in/out` | |
-| `degraded` 由谁置位 | 没有约定 | |
-| 超时/限流时是否仍返回一个完整对象 | 未定 | |
+| `provider` 是否就这四档 | `deepseek/qwen/ollama/mock` | 是；填写实际产生本次响应的 provider，四个值由 schema 枚举约束。 |
+| `usage` 只记 token 够不够，要不要记成本 | 只 `tokens_in/out` | 只记供应商报告的输入/输出 token；供应商缺失用量时适配层报错，不猜测。Mock 不消耗模型 token，固定记 `0/0`。美元成本依赖价格版本，由调度/报告层计算。 |
+| `degraded` 由谁置位 | 没有约定 | 调度器在一次失败后成功切到备用 provider 时置 `true`；用户一开始选择 `mock` 时为 `false`。`mock` 只根据实际 provider 判定，与 `degraded` 独立。 |
+| 超时/限流时是否仍返回一个完整对象 | 未定 | 否。`LLMResponse` 只代表成功调用；超时/限流抛有类型的错误，并写 `fail/retry/degrade` Trace。重试或降级成功后才返回响应。 |
 
 ### A-2 `task_state` —— 运行状态与续跑快照
 
 | 问题 | 现状 | 你的决定 |
 | --- | --- | --- |
-| 状态机是否就 5 态 | `pending/running/passed/failed/aborted` | |
-| `budget` 单位是调用次数还是 token | `calls_used/calls_max`（次数） | |
-| 断点续跑靠 `checkpoint` 还是重放 `trace` | 两者都有，语义未定 | |
+| 状态机是否就 5 态 | `pending/running/passed/failed/aborted` | 是。`failed` 表示执行结束且未通过验证或重试耗尽；`aborted` 表示取消、预算/轮次护栏主动终止。节点自身仍用 `pending/running/done/failed/skipped`。 |
+| `budget` 单位是调用次数还是 token | `calls_used/calls_max`（次数） | 按 LLM 调用尝试次数计，重试也占一次；每次尝试前检查 `calls_used < calls_max`。二者都必填；Token 用量留在各次 `LLMResponse.usage`。 |
+| 断点续跑靠 `checkpoint` 还是重放 `trace` | 两者都有，语义未定 | 从持久化 checkpoint 恢复 `TaskState`，并校验 `contract_version`；Trace 只用于审计和播放，不当作可执行状态。`checkpoint.enabled=true` 时必须有路径和创建时间。 |
 
 ### A-3 `delivery_artifact` —— 可核验交付包（**11/08 12:00 冻结**）
 
