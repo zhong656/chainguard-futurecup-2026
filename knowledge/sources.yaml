@@ -1,0 +1,58 @@
+# knowledge/sources.yaml —— 知识源声明
+#
+# Owner: B（知识库与工具）
+# 约定：
+#   - 每条记录必须能在 knowledge/corpus/ 找到对应文件
+#   - source_id 命名空间白名单：mv（产业/技术文档）/ web（网页摘录）/ csv（结构化参数表）
+#   - status: placeholder 的条目必须在 2026-11-07 前替换为可溯源资料
+#   - 严禁登记任何企业真实生产数据、客户信息、未脱敏内部文档
+
+version: 1
+updated: 2026-11-05
+namespace_whitelist: [mv, web, csv]
+
+sources:
+  - source_id: mv:doc001
+    title: 机器视觉质检现状（示例占位）
+    type: md
+    path: corpus/mv_inspection_status.md
+    acquired_at: 2026-11-05
+    license: placeholder
+    status: placeholder
+    replace_by: 2026-11-07
+
+  - source_id: mv:doc002
+    title: 单工位视觉质检改造成本区间（示例占位）
+    type: md
+    path: corpus/mv_cost_range.md
+    acquired_at: 2026-11-05
+    license: placeholder
+    status: placeholder
+    replace_by: 2026-11-07
+
+  - source_id: web:doc007
+    title: 边缘部署形态（示例占位）
+    type: md
+    path: corpus/edge_deploy.md
+    acquired_at: 2026-11-05
+    license: placeholder
+    status: placeholder
+    replace_by: 2026-11-07
+
+  - source_id: csv:param001
+    title: ROI 测算假设（示例占位）
+    type: md
+    path: corpus/roi_assumption.md
+    acquired_at: 2026-11-05
+    license: placeholder
+    status: placeholder
+    replace_by: 2026-11-07
+
+  - source_id: mv:doc003
+    title: 数据合规与安全要求（示例占位）
+    type: md
+    path: corpus/compliance.md
+    acquired_at: 2026-11-05
+    license: placeholder
+    status: placeholder
+    replace_by: 2026-11-07
