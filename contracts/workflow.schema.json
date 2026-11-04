@@ -22,15 +22,28 @@
           "tool": { "type": "string" },
           "depends_on": {
             "type": "array",
+            "description": "省略或空数组表示入口，整图仅允许一个入口；依赖全部完成后就绪，不代表隐式并行。引用、唯一入口及成环由 dag_compiler 校验。",
             "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
             "uniqueItems": true
           },
-          "when": { "type": "string", "description": "条件边表达式（仅 condition/loop 节点使用）" }
+          "when": { "type": "string", "minLength": 1, "description": "仅 condition/loop；Python 比较表达式子集：score/threshold/round、非负有限数、比较及 and/or/not；由 dag_compiler 校验 AST，不执行代码。" }
         },
         "allOf": [
           {
             "if": { "properties": { "type": { "const": "agent" } }, "required": ["type"] },
             "then": { "required": ["agent"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "tool" } }, "required": ["type"] },
+            "then": { "required": ["tool"] }
+          },
+          {
+            "if": { "properties": { "type": { "const": "condition" } }, "required": ["type"] },
+            "then": { "required": ["when"] }
+          },
+          {
+            "if": { "required": ["when"] },
+            "then": { "properties": { "type": { "enum": ["condition", "loop"] } } }
           }
         ],
         "additionalProperties": false
@@ -38,11 +51,12 @@
     },
     "loop": {
       "type": "object",
+      "required": ["from", "to", "max_rounds", "stop_if_no_gain_rounds"],
       "properties": {
         "from": { "type": "string" },
         "to": { "type": "string" },
-        "max_rounds": { "type": "integer", "minimum": 1, "maximum": 3 },
-        "stop_if_no_gain_rounds": { "type": "integer", "minimum": 1, "maximum": 3 }
+        "max_rounds": { "type": "integer", "const": 3, "description": "最多追加三轮修订；初稿 round=0。" },
+        "stop_if_no_gain_rounds": { "type": "integer", "const": 2, "description": "连续两轮 score 不高于历史最佳值即停止；未达标不得作为成功交付。" }
       },
       "additionalProperties": false
     },

@@ -1,54 +1,57 @@
-# ============================================================
-# workflows/industry_solution.yaml —— 主示范工作流（占位）
-# ------------------------------------------------------------
-# 用途：描述「产业技术方案自动生成与可信交付」的完整链路，
-#      由 DAG 编译器翻译为 LangGraph 可执行状态图。
-# 落地时间：阶段 2（11/11 DAG 编译器）；节点参数阶段 3 联调时定稿。
-# 说明：本文件只声明拓扑与边的语义，不含任何业务代码。
-# ============================================================
-
-# name: industry_solution
-# display_name: 产业技术方案自动生成与可信交付
-# version: 0.0.1
-#
-# # 输入：一句话产业需求
-# input_schema: UserRequest
-#
-# # 节点（顺序与依赖，编译器据此建图）
-# nodes:
-#   - id: plan            # Planner 拆解任务、生成验收清单
-#     agent: planner
-#   - id: retrieve        # Researcher 多轮检索，维护证据池
-#     agent: researcher
-#     depends_on: [plan]
-#   - id: analyze         # Analyst 数值测算与图表
-#     agent: analyst
-#     depends_on: [retrieve]
-#   - id: write           # Writer 按模板撰写，引用回填
-#     agent: writer
-#     depends_on: [retrieve, analyze]
-#   - id: verify          # Verifier 独立打分、定位问题段落
-#     agent: verifier
-#     depends_on: [write]
-#   - id: revise          # LoopController 定向回退（循环边）
-#     agent: writer
-#     depends_on: [verify]
-#     when: score < threshold and round < 3
-#   - id: review          # Reviewer 终审、收敛判定、交付摘要
-#     agent: reviewer
-#     depends_on: [verify]
-#
-# # 闭环：verify → revise → verify 构成 Self-Loop 循环边
-# loop:
-#   from: revise
-#   to: verify
-#   max_rounds: 3
-#   stop_if_no_gain_rounds: 2
-#
-# # 交付物（评审可直接打开）
-# outputs:
-#   - solution.md          # 方案书
-#   - evidence_chain.json  # 证据链
-#   - scorecard.json       # 评分卡
-#   - trace.jsonl          # 全链路留痕，可重放
-#   - charts/              # 图表
+# 节点 id 是跨模块接口；scorecard.target_node 使用 analyze / write。
+name: industry_solution
+display_name: 产业技术方案自动生成与可信交付
+version: 0.1.0
+nodes:
+  - id: plan
+    type: agent
+    agent: planner
+    depends_on: []
+  - id: retrieve
+    type: agent
+    agent: researcher
+    depends_on: [plan]
+  - id: fanout
+    type: parallel
+    depends_on: [retrieve]
+  - id: analyze
+    type: agent
+    agent: analyst
+    depends_on: [fanout]
+  - id: outline
+    type: agent
+    agent: writer
+    depends_on: [fanout]
+  - id: write
+    type: agent
+    agent: writer
+    depends_on: [analyze, outline]
+  - id: verify
+    type: agent
+    agent: verifier
+    depends_on: [write]
+  - id: gate
+    type: condition
+    depends_on: [verify]
+    when: score < threshold
+  - id: revise
+    type: loop
+    depends_on: [gate]
+    when: score < threshold and round < 3
+  - id: review
+    type: agent
+    agent: reviewer
+    depends_on: [gate]
+  - id: snap
+    type: checkpoint
+    depends_on: [review]
+loop:
+  from: revise
+  to: write
+  max_rounds: 3
+  stop_if_no_gain_rounds: 2
+outputs:
+  - solution.md
+  - evidence_chain.json
+  - scorecard.json
+  - trace.jsonl

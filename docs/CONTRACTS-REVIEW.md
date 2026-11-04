@@ -106,10 +106,18 @@
 
 | 问题 | 现状 | 你的决定 |
 | --- | --- | --- |
-| 6 类节点白名单是否够 | agent/tool/parallel/condition/loop/checkpoint | |
-| `depends_on` 为空 = 并行还是非法 | 未定（建议：与 `parallel` 节点同时存在时才算并行） | |
-| `loop.max_rounds` 固定 3 | 是 | |
-| `when` 表达式语法 | 样例写了 `score < threshold`，语法未定 | |
+| 6 类节点白名单是否够 | agent/tool/parallel/condition/loop/checkpoint | 保留六类；agent 必带角色名，tool 必带工具名，condition 必带 when。 |
+| `depends_on` 为空 = 并行还是非法 | 原未定 | 省略或 [] 表示唯一入口；多个入口非法。其余节点等待全部依赖完成。并行分支显式经 fanout 汇入 analyze/outline，再于 write 汇合。 |
+| `loop.max_rounds` 固定 3 | 是 | 固定 3 次追加修订，初稿 round=0；连续两轮 score 不超过历史最佳值即停，未达标以失败结束。 |
+| `when` 表达式语法 | 原未定 | Python 比较表达式子集，见下；AST 白名单校验，不运行任意代码。 |
+
+**D-1 执行约定（2026-11-05，待 A/C 会签）**
+
+- `when` 只允许 condition/loop 节点使用。变量固定 `score`、`threshold`、`round`；前两者取当前 scorecard，round 为已完成修订次数。常量为非负有限数；操作符只允许 `< <= > >= == !=`、`and/or/not` 和括号；禁止调用、属性、索引和算术。整个表达式须为比较或布尔组合。
+- `gate.when = score < threshold`：真分支仅进入后继 loop 节点 revise；假分支仅进入普通后继 review，两条分支互斥。未选分支跳过，不阻塞另一分支。revise.when 为修订护栏，护栏不满足或无提升上限触发时失败终止，不能转为成功终审。
+- `loop.from = revise`、`loop.to = write` 是默认回边，重跑 write → verify → gate；普通 depends_on 必须无环。后续 LoopController 可按 scorecard 的 target_node 从 analyze 或 write 定向回退，并重算受影响下游，保留未受影响分支结果；本次仅定接口，不实现执行器。
+- 对外节点 id 固定包含 `analyze`、`write`，供 C 的 scorecard 引用；6 个角色名为 planner/researcher/analyst/writer/verifier/reviewer，与 C 的 agents 文件 name 对齐。
+- Schema 检查字段与循环护栏；`src/dag_compiler.py` 检查唯一入口、重复 id、悬空依赖、普通依赖环、回边端点及表达式语法。`tests/test_dag.py` 同时核对 YAML/JSON 正例一致、scorecard 目标存在和并行汇合关系；随 `python scripts/check.py` 自动运行。
 
 ### D-2 `trace_event` —— 留痕事件
 
