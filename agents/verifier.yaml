@@ -1,0 +1,25 @@
+# ============================================================
+# agents/verifier.yaml —— Verifier 验证员（占位）
+# ------------------------------------------------------------
+# 用途：独立打分、定位问题段落、生成可执行的修订指令。
+# 输入：Draft + EvidencePool
+# 输出：ScoreCard{metrics, issues[], verdict}
+# 关键约束：
+#   1) 提示词与温度必须与 writer **不同**，避免同源偏差；
+#   2) issues[].target_node 用于驱动 Self-Loop 定向回退；
+#   3) 与 configs/verifier.yaml 的权重、阈值保持一致。
+# ============================================================
+
+# name: verifier
+# display_name: 验证员
+# role: 独立打分、定位问题段落、生成修订指令
+# tier: strong
+# tools: [rule_verifier, knowledge_retrieve]
+# input_schema: VerificationRequest
+# output_schema: ScoreCard
+# temperature: <待定>              # 必须与 writer 不同
+# system_prompt_ref: prompts/verifier.md
+# issues:
+#   require_fields: [section, reason, suggestion, target_node]
+#   max_items: <待定>
+# verdict_threshold_ref: configs/verifier.yaml#scorecard.pass_threshold

@@ -1,0 +1,21 @@
+# ============================================================
+# agents/researcher.yaml —— Researcher 检索员（占位）
+# ------------------------------------------------------------
+# 用途：多轮检索、抽取事实、维护证据池，为后续写作提供可回溯素材。
+# 输入：Plan 中的检索需求
+# 输出：EvidencePool{items[source_id, claim, score]}
+# 关键约束：每条 claim 必须携带 source_id，否则验证器判不合格。
+# ============================================================
+
+# name: researcher
+# display_name: 检索员
+# role: 多轮检索、抽取事实、维护证据池
+# tier: small                     # 轻量模型足够，控制成本
+# tools: [knowledge_retrieve, doc_parse, web_fetch_optional]
+# input_schema: RetrievalQuery
+# output_schema: EvidencePool
+# top_k: <待定>
+# retrieval_mode: hybrid           # vector + bm25 + rerank
+# timeout_s: <待定>
+# retry: {max_attempts: <待定>}
+# system_prompt_ref: prompts/researcher.md

@@ -1,0 +1,19 @@
+# ============================================================
+# agents/planner.yaml —— Planner 规划师（占位）
+# ------------------------------------------------------------
+# 用途：把用户需求拆解为可执行的 DAG 计划，并产出验收清单。
+# 输入：用户需求文本 + 可用角色/工具清单
+# 输出：Plan{steps, acceptance_criteria, complexity}
+# 阶段 2（11/10 AgentRegistry）落地；本阶段仅声明字段，不写提示词正文。
+# ============================================================
+
+# name: planner
+# display_name: 规划师
+# role: 拆解任务、生成 DAG 执行计划与验收清单
+# tier: strong                    # 模型档位，见 configs/llm.yaml
+# tools: [knowledge_retrieve]     # 工具白名单（只读检索）
+# input_schema: UserRequest
+# output_schema: Plan
+# timeout_s: <待定>
+# retry: {max_attempts: <待定>}
+# system_prompt_ref: prompts/planner.md   # 提示词外置，阶段 2 落盘

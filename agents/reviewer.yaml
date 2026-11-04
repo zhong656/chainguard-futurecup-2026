@@ -1,0 +1,21 @@
+# ============================================================
+# agents/reviewer.yaml —— Reviewer 复审员（占位）
+# ------------------------------------------------------------
+# 用途：终审、收敛判定、生成交付摘要与失败归因。
+# 输入：ScoreCard（多轮）+ Draft（终稿）+ Trace 摘要
+# 输出：FinalReport{summary, trace_ref, loop_log}
+# 关键约束：只读，不修改交付内容，只做判定与归因。
+# ============================================================
+
+# name: reviewer
+# display_name: 复审员
+# role: 终审、收敛判定、生成交付摘要与失败归因
+# tier: strong
+# tools: [trace_read, knowledge_retrieve]      # 全部只读
+# input_schema: ReviewRequest
+# output_schema: FinalReport
+# decision:
+#   pass: score >= threshold and no_blocking_issue
+#   retry: score < threshold and rounds < max_rounds and improving
+#   abort: rounds >= max_rounds or no_gain_rounds >= 2
+# system_prompt_ref: prompts/reviewer.md

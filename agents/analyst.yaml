@@ -1,0 +1,22 @@
+# ============================================================
+# agents/analyst.yaml —— Analyst 分析师（占位）
+# ------------------------------------------------------------
+# 用途：数值测算、参数对比、生成图表，支撑方案中的成本与 ROI 部分。
+# 输入：EvidencePool + 测算需求
+# 输出：Analysis{tables, charts, assumptions}
+# 关键约束：所有计算必须在受限沙箱内执行，结果可复算。
+# ============================================================
+
+# name: analyst
+# display_name: 分析师
+# role: 数值测算、参数对比、生成图表
+# tier: strong
+# tools: [python_sandbox, chart_render, knowledge_retrieve]
+# input_schema: AnalysisRequest
+# output_schema: Analysis
+# sandbox:
+#   timeout_s: <待定>
+#   allow_imports: [math, statistics, pandas, matplotlib]
+#   max_output_bytes: <待定>
+# timeout_s: <待定>
+# system_prompt_ref: prompts/analyst.md

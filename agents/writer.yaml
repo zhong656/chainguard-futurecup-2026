@@ -1,0 +1,23 @@
+# ============================================================
+# agents/writer.yaml —— Writer 撰写员（占位）
+# ------------------------------------------------------------
+# 用途：按模板生成结构化方案书，并强制把引用回填到每一段。
+# 输入：EvidencePool + Analysis + 章节模板
+# 输出：Draft{sections[title, content, citations[]]}
+# 关键约束：sections 的 citations 不得为空；无引用段落会被验证器判不合格。
+# ============================================================
+
+# name: writer
+# display_name: 撰写员
+# role: 按模板生成结构化方案书，强制引用回填
+# tier: strong
+# tools: [template_render, knowledge_retrieve]
+# input_schema: WritingTask
+# output_schema: Draft
+# template: templates/industry_solution.md
+# required_sections: [现状痛点, 技术选型, 数据方案, 实施阶段, 成本与ROI, 风险与合规]
+# citation:
+#   required: true
+#   format: "[source_id]"
+# timeout_s: <待定>
+# system_prompt_ref: prompts/writer.md
