@@ -1,10 +1,14 @@
 # ============================================================
-# configs/verifier.yaml —— 评分卡权重与判定阈值（占位）
+# configs/verifier.yaml —— 评分卡权重与判定阈值
 # ------------------------------------------------------------
 # 用途：定义三层验证的开关、评分维度与权重、通过阈值、Self-Loop 触发条件。
 #      是赛题考察点 5「Self-Loop」与 6「结果验证」的主要可展示证据。
 # 落地时间：阶段 3（11/13 规则验证器 + 评分卡，11/15 LoopController）。
 # 验收口径：故意造错（假引用 / 数值不一致 / 缺章节）能被 100% 检出。
+# ------------------------------------------------------------
+# 状态：
+#   scorecard 段已定稿（2026-11-05，C，见 docs/CHANGELOG-contracts.md）；
+#   layers / rules / feedback 仍是待定占位，阶段 3 落地时再填。
 # ============================================================
 
 # layers：三层验证开关（L1 确定性兜底 → L2 模型交叉 → L3 双路比对）
@@ -14,17 +18,28 @@
 #   cross_check: true  # L3 双路检索比对：同一结论用两条检索路径验证
 
 # scorecard：评分维度与权重（合计必须为 1.0）
-# scorecard:
-#   weights:
-#     citation: <待定>     # 引用可回溯比例
-#     consistency: <待定>  # 数值与参数表一致性
-#     coverage: <待定>     # 章节完整性
-#     logic: <待定>        # 论述与结论自洽
-#     format: <待定>       # 模板与 Schema 合规
-#   pass_threshold: <待定>   # 通过阈值，未达即触发 Self-Loop
-#   max_rounds: 3            # 硬上限，防止成本失控
-#   convergence:             # 收敛判据
-#     stop_if_no_gain_rounds: 2   # 连续两轮无提升即终止并给出原因
+scorecard:
+  weights:
+    citation: 0.30                 # 引用可回溯比例：本项目核心卖点，权重最高
+    consistency: 0.20              # 数值与参数表一致性
+    coverage: 0.20                 # 章节完整性
+    logic: 0.20                    # 论述与结论自洽
+    format: 0.10                   # 模板与 Schema 合规：机器可判，故权重最低
+  pass_threshold: 0.85             # 未达即触发 Self-Loop
+  max_rounds: 3                    # 硬上限，防止成本失控
+  convergence:                     # 收敛判据
+    stop_if_no_gain_rounds: 2      # 连续两轮无提升即终止并给出原因
+  veto:                            # 一票否决：加权分再高也不能掩盖硬伤
+    metric_floor: 0.60             # 任一维度 < 0.60 → verdict=fail
+    blocker_issue: true            # 存在 severity=blocker 的 issue → verdict=fail
+
+# 计分口径（LoopController 与 verifier 提示词都按此实现）：
+#   score = Σ weights[k] × metrics[k]，结果保留 3 位小数
+#   verdict = fail 若 score < pass_threshold
+#           或 min(metrics[k]) < veto.metric_floor
+#           或 issues 中存在 severity=blocker
+#   例：metrics 0.55/0.85/0.75/0.80/1.00 → score = 0.745 → fail
+#       （见 contracts/examples/scorecard.good.json）
 
 # rules：L1 规则验证器细则
 # rules:
