@@ -33,6 +33,19 @@ jobs:
       - name: make check
         run: make check
 
+      # 生成物必须留在本地/CI artifact，不得进 PR（否则每个 PR 都会互相冲突）
+      - name: Guard generated files
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch --no-tags --depth=50 origin "${{ github.base_ref }}" || true
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- 'docs/consistency-report.md' || true)
+          if [ -n "$CHANGED" ]; then
+            echo "::error file=docs/consistency-report.md::生成物不得入库：请在本地删除该文件改动后重新提交（make check 会重新生成，CI 会以 artifact 形式提供）"
+            exit 1
+          fi
+          echo "✔ 未发现生成物改动"
+
       - name: Upload consistency report
         if: always()
         uses: actions/upload-artifact@v4

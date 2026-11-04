@@ -17,7 +17,7 @@
   ],
   "loop": {
     "from": "revise",
-    "to": "write",
+    "to": "fanout",
     "max_rounds": 3,
     "stop_if_no_gain_rounds": 2
   },

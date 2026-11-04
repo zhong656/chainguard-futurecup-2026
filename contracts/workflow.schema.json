@@ -54,7 +54,7 @@
       "required": ["from", "to", "max_rounds", "stop_if_no_gain_rounds"],
       "properties": {
         "from": { "type": "string" },
-        "to": { "type": "string" },
+        "to": { "type": "string", "description": "回退的默认落点，必须是 nodes 中存在的 id。scorecard.issues[].target_node 可指定更精确的落点覆盖它；执行器从该落点重跑并再次经过 verify。取公共上游（如 fanout）才能覆盖分析类与写作类错误。" },
         "max_rounds": { "type": "integer", "const": 3, "description": "最多追加三轮修订；初稿 round=0。" },
         "stop_if_no_gain_rounds": { "type": "integer", "const": 2, "description": "连续两轮 score 不高于历史最佳值即停止；未达标不得作为成功交付。" }
       },

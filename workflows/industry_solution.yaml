@@ -1,4 +1,4 @@
-# 节点 id 是跨模块接口；scorecard.target_node 使用 analyze / write。
+﻿# 节点 id 是跨模块接口；scorecard.target_node 使用 analyze / write。
 name: industry_solution
 display_name: 产业技术方案自动生成与可信交付
 version: 0.1.0
@@ -47,7 +47,7 @@ nodes:
     depends_on: [review]
 loop:
   from: revise
-  to: write
+  to: fanout
   max_rounds: 3
   stop_if_no_gain_rounds: 2
 outputs:
