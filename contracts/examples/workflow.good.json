@@ -3,17 +3,21 @@
   "display_name": "产业技术方案自动生成与可信交付",
   "version": "0.1.0",
   "nodes": [
-    { "id": "plan", "type": "agent", "agent": "planner" },
-    { "id": "retrieve", "type": "agent", "agent": "researcher", "depends_on": ["plan"] },
-    { "id": "fanout", "type": "parallel", "depends_on": ["retrieve"] },
-    { "id": "write", "type": "agent", "agent": "writer", "depends_on": ["fanout"] },
-    { "id": "gate", "type": "condition", "depends_on": ["write"], "when": "score < threshold" },
-    { "id": "revise", "type": "loop", "depends_on": ["gate"] },
-    { "id": "snap", "type": "checkpoint", "depends_on": ["revise"] }
+    {"id": "plan", "type": "agent", "agent": "planner", "depends_on": []},
+    {"id": "retrieve", "type": "agent", "agent": "researcher", "depends_on": ["plan"]},
+    {"id": "fanout", "type": "parallel", "depends_on": ["retrieve"]},
+    {"id": "analyze", "type": "agent", "agent": "analyst", "depends_on": ["fanout"]},
+    {"id": "outline", "type": "agent", "agent": "writer", "depends_on": ["fanout"]},
+    {"id": "write", "type": "agent", "agent": "writer", "depends_on": ["analyze", "outline"]},
+    {"id": "verify", "type": "agent", "agent": "verifier", "depends_on": ["write"]},
+    {"id": "gate", "type": "condition", "depends_on": ["verify"], "when": "score < threshold"},
+    {"id": "revise", "type": "loop", "depends_on": ["gate"], "when": "score < threshold and round < 3"},
+    {"id": "review", "type": "agent", "agent": "reviewer", "depends_on": ["gate"]},
+    {"id": "snap", "type": "checkpoint", "depends_on": ["review"]}
   ],
   "loop": {
     "from": "revise",
-    "to": "gate",
+    "to": "write",
     "max_rounds": 3,
     "stop_if_no_gain_rounds": 2
   },
