@@ -82,3 +82,33 @@ B 的 source_ref → C 的 scorecard / compile_error → D 的 workflow / trace
 ```
 
 `main` 只经 PR 合并；禁止 force push；作者不得合并自己的 PR。
+
+## 八、生成物永不入库（2026-11-05 定）
+
+**生成物**指每次运行都会被重写的文件，目前只有两份：
+
+| 文件 | 谁生成 | 去处 |
+| --- | --- | --- |
+| `docs/consistency-report.md` | `scripts/check_contracts.py` | 本地生成 + CI artifact |
+| `docs/CHANGELOG-contracts.md` | 人在合并后追加 | 只在 `main` 上追加，分支禁止修改 |
+
+**为什么**：生成物不是"内容"，是"运行结果"。两个分支各自跑一次检查，报告必然不同；合并时就一定冲突。2026-11-04 夜里 6 个 PR 里有 5 个卡在这个文件上，就是代价。
+
+**怎么保证**：
+
+1. `.gitignore` 已列入，`git add -A` 不会带上；
+2. CI 的 `Guard generated files` 步骤会 **fail** —— 就算 `git add -f` 强行提交，也合不进去；
+3. 需要的报告从 CI artifact 下载，或本地 `python scripts/check.py` 生成。
+
+## 九、合并纪律（2026-11-05 定）
+
+- **一人一天一个 PR**：分支活不过 24 小时，冲突最多一行；
+- **合并窗口 12:00 / 22:00**：其余时间只提不合，避免多人同时 merge 互相顶；
+- **每天 22:00 打 tag** `snapshot/YYYYMMDD`：Free 套餐没有分支保护，这是唯一的回滚点；
+- **一个 clone 只跑一个 agent**：多个会话同写一个工作目录会互相污染（2026-11-04 已发生一次）。
+
+## 十、跨契约引用检查
+
+`make check` 现在会校验：`scorecard` 样例里的 `target_node` 必须是 `workflows/*.yaml` 中真实存在的节点 id。
+
+这类错误单看任何一份 schema 都合法，只有跨文件比对才能发现。新增同类引用时（例如 `agent` 字段指向角色名），按同样方式加检查，**不要靠人眼**。

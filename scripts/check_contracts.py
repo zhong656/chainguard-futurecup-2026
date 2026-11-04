@@ -240,6 +240,51 @@ def check_examples(ctx: dict) -> None:
         add(OK, "正反例", f"{ok_count} 组全部符合预期（正例通过、反例被拒）")
 
 
+def check_cross_refs() -> None:
+    """9) 跨契约引用：scorecard 的 target_node 必须存在于 workflows/*.yaml 的节点中。
+
+    这是唯一能抓住「验证器指了一个不存在的回退点」的检查——
+    单份 schema 校验永远发现不了，因为它们各自合法。
+    """
+    try:
+        import yaml  # noqa: PLC0415
+    except ImportError:
+        return
+
+    node_ids: set[str] = set()
+    wf_files = sorted(ROOT.glob("workflows/*.yaml"))
+    for f in wf_files:
+        data = yaml.safe_load(f.read_text(encoding="utf-8"))
+        if not isinstance(data, dict):
+            continue
+        for node in data.get("nodes") or []:
+            if isinstance(node, dict) and node.get("id"):
+                node_ids.add(node["id"])
+    if not node_ids:
+        add(WARN, "跨契约引用", "workflows/ 里没有可用节点，跳过", "D")
+        return
+
+    bad: list[str] = []
+    for ex in sorted((CONTRACTS / "examples").glob("scorecard.*.json")):
+        try:
+            data = json.loads(ex.read_text(encoding="utf-8"))
+        except Exception:  # noqa: BLE001
+            continue
+        for issue in data.get("issues") or []:
+            target = str(issue.get("target_node", ""))
+            if target and target not in node_ids:
+                bad.append(f"{ex.name}:{target}")
+    if bad:
+        add(
+            ERROR,
+            "跨契约引用",
+            f"target_node 不在工作流节点集合中：{', '.join(bad)}；合法值：{', '.join(sorted(node_ids))}",
+            "C",
+        )
+    else:
+        add(OK, "跨契约引用", f"target_node 均可解析（{len(node_ids)} 个节点）")
+
+
 def check_owners() -> None:
     """4) docs/owners.yaml 覆盖全部一级目录。"""
     try:
@@ -336,6 +381,7 @@ def main() -> int:
         check_refs(ctx)
         check_configs(ctx)
         check_examples(ctx)
+        check_cross_refs()
     check_owners()
     check_requirements()
     check_source_ids()
