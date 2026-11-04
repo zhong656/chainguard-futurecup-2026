@@ -1,0 +1,79 @@
+name: check
+
+# 唯一准入门槛：跑的永远是 make check（= python scripts/check.py）。
+# 注意：Free 私有库无 required status checks，红灯在技术上拦不住合并，
+#       这里只能保证「每次 push/PR 都留下判定记录」。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      # 只装检查所需的最小依赖：完整 requirements.txt 含 chromadb 等重依赖，
+      # 在 CI 里安装会让每次检查多花数分钟，且与「快速反馈」目标冲突。
+      - name: Install check deps
+        run: python -m pip install --upgrade pip && python -m pip install pyyaml jsonschema pytest
+
+      - name: make check
+        run: make check
+
+      - name: Upload consistency report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consistency-report
+          path: docs/consistency-report.md
+          if-no-files-found: warn
+
+      # 契约文件变更时，输出受影响模块与应会签人（不阻断，仅提示）
+      - name: Contract impact notice
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE="origin/${{ github.base_ref }}"
+          git fetch --no-tags --depth=50 origin "${{ github.base_ref }}" || true
+          CHANGED=$(git diff --name-only "$BASE"...HEAD -- 'contracts/*.schema.json' || true)
+          if [ -z "$CHANGED" ]; then
+            echo "本次 PR 未改动 contracts/，无需跨模块会签。"
+            exit 0
+          fi
+          echo "::notice::本 PR 触及契约文件，需要 ≥1 名非 Owner 成员会签"
+          echo "变更的契约："
+          echo "$CHANGED"
+          echo ""
+          echo "应会签人（来自 docs/owners.yaml）："
+          python - <<'PY'
+          import yaml, subprocess
+          owners = yaml.safe_load(open("docs/owners.yaml", encoding="utf-8"))
+          co = owners.get("contracts_owners", {})
+          roles = owners.get("roles", {})
+          changed = subprocess.run(
+              ["git", "diff", "--name-only", "HEAD~1", "HEAD"], capture_output=True, text=True
+          ).stdout.split()
+          seen = set()
+          for f in changed:
+              name = f.split("/")[-1]
+              if name in co:
+                  role = co[name]
+                  acc = roles.get(role, {}).get("account", "?")
+                  if name not in seen:
+                      seen.add(name)
+                      print(f"  - {name}: Owner {role}（{acc}）")
+          print("")
+          print("复核要求：≥1 名非 Owner 的成员 approve，且 make check 绿灯。")
+          PY

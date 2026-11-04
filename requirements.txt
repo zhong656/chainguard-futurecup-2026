@@ -35,10 +35,12 @@ pyyaml
 jinja2
 orjson
 
-# ---------- 测试 ----------
+# ---------- 测试与一致性检查 ----------
 pytest
 pytest-asyncio
 pytest-cov
+jsonschema
+pyyaml
 
 # ---------- 前端 ----------
 # 前端依赖不入本文件，见 web/package.json（阶段 4 落地）

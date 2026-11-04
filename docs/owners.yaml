@@ -1,0 +1,79 @@
+# docs/owners.yaml —— 机器可读的归属表
+#
+# scripts/check_contracts.py 与 CI 都读本文件：
+#   - 校验仓库每个一级目录都有 owner 与 backup，缺失即失败
+#   - 契约变更、CI 失败时按此处的人做定向通知
+#
+# 修改本文件等同于调整分工，须走 PR，且全员知会。
+
+version: 1
+updated: 2026-11-04
+branch: main
+
+roles:
+  A:
+    account: ye0609
+    title: 队长 / 架构与调度
+    scope: 动态调度、整体集成
+  B:
+    account: zhong656
+    title: 知识库与工具
+    scope: 知识库定义与集成
+    note: 仓库 Owner（admin），负责仓库设置类操作
+  C:
+    account: uuiu4399
+    title: Agent 与验证
+    scope: Agent 团队定义、结果验证与反馈优化
+  D:
+    account: 2055034503-ai
+    title: 编排与前端
+    scope: 工作流编排、Self-Loop、演示
+
+# 一级目录 → 归属（check_contracts 会枚举仓库一级目录，缺一即失败）
+directories:
+  contracts:
+    owner: A
+    backup: C
+    note: 10 份契约的合并权归各自 Owner，见 contracts_owners
+  configs:
+    owner: A
+    backup: C
+  agents:
+    owner: C
+    backup: A
+  workflows:
+    owner: D
+    backup: A
+  knowledge:
+    owner: B
+    backup: C
+  src:
+    owner: A
+    backup: D
+  tests:
+    owner: A
+    backup: B
+  scripts:
+    owner: A
+    backup: D
+  docs:
+    owner: A
+    backup: B
+
+# 单份契约的 Owner（与 contracts/*.schema.json 的 description 必须一致）
+contracts_owners:
+  source_ref.schema.json: B
+  retrieval_result.schema.json: B
+  scorecard.schema.json: C
+  compile_error.schema.json: C
+  agent_spec.schema.json: C
+  workflow.schema.json: D
+  trace_event.schema.json: D
+  llm_response.schema.json: A
+  task_state.schema.json: A
+  delivery_artifact.schema.json: A
+
+freeze:
+  # 前 9 份统一冻结；第 10 份只 $ref 组装、依赖前 9 份，故单独延后
+  contracts_09: "2026-11-07T22:00:00+08:00"
+  delivery_artifact: "2026-11-08T12:00:00+08:00"
