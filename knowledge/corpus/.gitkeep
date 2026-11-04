@@ -1,0 +1,4 @@
+# 占位：离线语料包目录（阶段 1 落地）
+
+把语料文件放在本目录，由 `knowledge/sources.yaml` 声明后统一建索引。
+具体约定见父目录 `knowledge/.gitkeep`。

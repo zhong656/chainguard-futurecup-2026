@@ -1,0 +1,18 @@
+# 占位：后端实现目录（阶段 2 落地）
+
+规划中的模块（对应项目书 3.4 与第四章）：
+
+- `main.py` FastAPI 入口
+- `llm_adapter.py` OpenAI 兼容四档适配（deepseek / qwen / ollama / mock）
+- `registry.py` Agent 注册与热加载
+- `dag_compiler.py` YAML → 可执行状态图
+- `scheduler.py` 动态调度
+- `knowledge_hub.py` 知识库与混合检索
+- `loop_controller.py` Self-Loop 与收敛判据
+- `feedback.py` 反馈库与离线优化
+- `trace.py` 全链路留痕与重放
+- `models.py` Pydantic 数据结构
+- `tools/` 检索 / 沙箱 / 图表 / 解析
+- `verifier/` 规则验证 + 模型验证 + 评分卡
+
+本阶段只建目录，不写业务代码。
