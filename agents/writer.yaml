@@ -1,23 +1,24 @@
 # ============================================================
-# agents/writer.yaml —— Writer 撰写员（占位）
+# agents/writer.yaml —— Writer 撰写员
 # ------------------------------------------------------------
 # 用途：按模板生成结构化方案书，并强制把引用回填到每一段。
 # 输入：EvidencePool + Analysis + 章节模板
 # 输出：Draft{sections[title, content, citations[]]}
 # 关键约束：sections 的 citations 不得为空；无引用段落会被验证器判不合格。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
+# ------------------------------------------------------------
+# 注：template / required_sections / citation 规则不属 agent_spec，
+#     分别落在模板文件与 L1 规则（configs/verifier.yaml rules.sections）。
 # ============================================================
 
-# name: writer
-# display_name: 撰写员
-# role: 按模板生成结构化方案书，强制引用回填
-# tier: strong
-# tools: [template_render, knowledge_retrieve]
-# input_schema: WritingTask
-# output_schema: Draft
-# template: templates/industry_solution.md
-# required_sections: [现状痛点, 技术选型, 数据方案, 实施阶段, 成本与ROI, 风险与合规]
-# citation:
-#   required: true
-#   format: "[source_id]"
-# timeout_s: <待定>
-# system_prompt_ref: prompts/writer.md
+name: writer
+display_name: 撰写员
+role: 按模板生成结构化方案书，强制引用回填
+tier: strong                     # 长文结构化生成，全程 strong
+tools: [template_render, knowledge_retrieve]
+input_schema: WritingTask
+output_schema: Draft
+timeout_s: 180                   # 长文生成，重活档
+retry: {max_attempts: 2}
+temperature: 0.3                 # 与 verifier 的 0.0 必须拉开，避免同源偏差
+system_prompt_ref: prompts/writer.md

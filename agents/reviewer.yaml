@@ -1,21 +1,26 @@
 # ============================================================
-# agents/reviewer.yaml —— Reviewer 复审员（占位）
+# agents/reviewer.yaml —— Reviewer 复审员
 # ------------------------------------------------------------
 # 用途：终审、收敛判定、生成交付摘要与失败归因。
 # 输入：ScoreCard（多轮）+ Draft（终稿）+ Trace 摘要
 # 输出：FinalReport{summary, trace_ref, loop_log}
 # 关键约束：只读，不修改交付内容，只做判定与归因。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
+# ------------------------------------------------------------
+# 判定口径（由 LoopController 执行，不写在 agent_spec 里）：
+#   pass  : score >= threshold 且无 blocker issue
+#   retry : score <  threshold 且 rounds < max_rounds 且本轮有提升
+#   abort : rounds >= max_rounds 或连续 no_gain_rounds 达标
 # ============================================================
 
-# name: reviewer
-# display_name: 复审员
-# role: 终审、收敛判定、生成交付摘要与失败归因
-# tier: strong
-# tools: [trace_read, knowledge_retrieve]      # 全部只读
-# input_schema: ReviewRequest
-# output_schema: FinalReport
-# decision:
-#   pass: score >= threshold and no_blocking_issue
-#   retry: score < threshold and rounds < max_rounds and improving
-#   abort: rounds >= max_rounds or no_gain_rounds >= 2
-# system_prompt_ref: prompts/reviewer.md
+name: reviewer
+display_name: 复审员
+role: 终审、收敛判定、生成交付摘要与失败归因
+tier: strong                     # 终审一口气看多轮评分卡 + trace，必须强档
+tools: [trace_read, knowledge_retrieve]   # 全部只读，不碰交付物
+input_schema: ReviewRequest
+output_schema: FinalReport
+timeout_s: 90                    # 只读汇总，最短档
+retry: {max_attempts: 2}
+temperature: 0.1                 # 归因要稳定，几乎不采样
+system_prompt_ref: prompts/reviewer.md

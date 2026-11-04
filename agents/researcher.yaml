@@ -1,21 +1,25 @@
 # ============================================================
-# agents/researcher.yaml —— Researcher 检索员（占位）
+# agents/researcher.yaml —— Researcher 检索员
 # ------------------------------------------------------------
 # 用途：多轮检索、抽取事实、维护证据池，为后续写作提供可回溯素材。
 # 输入：Plan 中的检索需求
 # 输出：EvidencePool{items[source_id, claim, score]}
 # 关键约束：每条 claim 必须携带 source_id，否则验证器判不合格。
+#          6 个角色里唯一的 small 档：高频、低难度、产出靠工具而非靠模型推理。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
+# ------------------------------------------------------------
+# 注：top_k / retrieval_mode 不属 agent_spec（schema 禁止多余字段），
+#     落在检索工具自身的参数里（src/tools 注册表，归 B）。
 # ============================================================
 
-# name: researcher
-# display_name: 检索员
-# role: 多轮检索、抽取事实、维护证据池
-# tier: small                     # 轻量模型足够，控制成本
-# tools: [knowledge_retrieve, doc_parse, web_fetch_optional]
-# input_schema: RetrievalQuery
-# output_schema: EvidencePool
-# top_k: <待定>
-# retrieval_mode: hybrid           # vector + bm25 + rerank
-# timeout_s: <待定>
-# retry: {max_attempts: <待定>}
-# system_prompt_ref: prompts/researcher.md
+name: researcher
+display_name: 检索员
+role: 多轮检索、抽取事实、维护证据池
+tier: small                      # 唯一轻量档，压检索轮次的成本
+tools: [knowledge_retrieve, doc_parse, web_fetch_optional]
+input_schema: RetrievalQuery
+output_schema: EvidencePool
+timeout_s: 180                   # 重活档：多轮检索 + 文档解析
+retry: {max_attempts: 3}         # 外部依赖最多，重试给到 3 次
+temperature: 0.0                 # 事实抽取不要发挥
+system_prompt_ref: prompts/researcher.md
