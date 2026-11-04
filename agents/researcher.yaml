@@ -17,6 +17,7 @@ display_name: 检索员
 role: 多轮检索、抽取事实、维护证据池
 tier: small                      # 唯一轻量档，压检索轮次的成本
 tools: [knowledge_retrieve, doc_parse, web_fetch_optional]
+read_only: true                  # 检索/解析/抓取均只读，不写库、不产文件
 input_schema: RetrievalQuery
 output_schema: EvidencePool
 timeout_s: 180                   # 重活档：多轮检索 + 文档解析

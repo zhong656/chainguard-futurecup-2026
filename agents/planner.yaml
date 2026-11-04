@@ -13,6 +13,7 @@ display_name: 规划师
 role: 拆解任务、生成 DAG 执行计划与验收清单
 tier: strong                     # 长上下文推理；与 configs/llm.yaml routing.planner 保持一致
 tools: [knowledge_retrieve]      # 只读检索，不给写库能力
+read_only: true                  # 4 个只读角色之一；tools 全部落在注册表的 read_only 集合里
 input_schema: UserRequest
 output_schema: Plan
 timeout_s: 90                    # 分级超时最短档：纯生成、无外部 IO

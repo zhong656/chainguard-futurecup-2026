@@ -66,6 +66,7 @@
 - `tools` 只能引用 `src/tools/registry.py` 里已注册的 **8 个工具名**
 - `tier` 只有 `small` / `strong`；当前只有 `researcher` 是 small
 - **`verifier` 的 temperature 必须与 `writer` 不同**（当前 0.0 vs 0.3），这是"避免同源偏差"的硬要求
+- **`read_only` 必填布尔值**：`true` 表示角色不得调用任何有副作用的工具，其 `tools` 必须全部是 `registry.py` 里 `read_only=True` 的那 5 个工具；`false` 表示允许。当前 `planner` / `researcher` / `verifier` / `reviewer` 为 `true`，`analyst` / `writer` 为 `false`。禁止省略该字段由缺省值推断
 
 ### `llm_response`
 
