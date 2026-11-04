@@ -4,10 +4,10 @@
   "title": "LLMResponse —— 模型调用统一响应",
   "description": "Owner: A（架构与调度）｜冻结时间: 2026-11-07 22:00｜契约编号 8/10。四档适配（deepseek/qwen/ollama/mock）必须收敛到同一结构，否则上层无法切换。",
   "type": "object",
-  "required": ["provider", "model", "tier", "content", "usage", "latency_ms"],
+  "required": ["provider", "model", "tier", "content", "usage", "latency_ms", "degraded", "mock"],
   "properties": {
     "provider": { "enum": ["deepseek", "qwen", "ollama", "mock"] },
-    "model": { "type": "string" },
+    "model": { "type": "string", "minLength": 1 },
     "tier": { "enum": ["small", "strong"] },
     "content": { "type": "string" },
     "usage": {
@@ -24,5 +24,18 @@
     "degraded": { "type": "boolean", "description": "是否因超时/限流走了降级链路" },
     "mock": { "type": "boolean" }
   },
+  "if": { "properties": { "provider": { "const": "mock" } }, "required": ["provider"] },
+  "then": {
+    "properties": {
+      "mock": { "const": true },
+      "usage": {
+        "properties": {
+          "tokens_in": { "const": 0 },
+          "tokens_out": { "const": 0 }
+        }
+      }
+    }
+  },
+  "else": { "properties": { "mock": { "const": false } } },
   "additionalProperties": false
 }

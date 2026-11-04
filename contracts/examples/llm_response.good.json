@@ -1,11 +1,11 @@
 {
-  "provider": "deepseek",
-  "model": "deepseek-chat",
+  "provider": "mock",
+  "model": "mock-strong",
   "tier": "strong",
-  "content": "## 现状痛点\n……",
-  "usage": { "tokens_in": 1240, "tokens_out": 860 },
-  "latency_ms": 2380,
+  "content": "## 现状痛点\n模拟内容",
+  "usage": { "tokens_in": 0, "tokens_out": 0 },
+  "latency_ms": 0,
   "finish_reason": "stop",
   "degraded": false,
-  "mock": false
+  "mock": true
 }

@@ -1,43 +1,42 @@
-# ============================================================
-# configs/llm.yaml —— 模型档位与路由策略（占位）
-# ------------------------------------------------------------
-# 用途：声明本平台可用的 LLM 档位，以及「哪个角色 / 哪类节点用哪一档」。
-#      统一走 OpenAI 兼容接口，四档可切换，Mock 档用于离线复现（评审免 Key）。
-# 落地时间：阶段 2（11/8 LLM 适配层）；阶段 2 末（11/12）随调度策略定稿。
-# 约定：**不在此文件写任何 Key**，Key 只从环境变量 LLM_API_KEY 读取（见 SECURITY.md）
-# ============================================================
+# 默认离线运行；LLM_PROVIDER 可在运行时选择以下四种 provider。
+# 不存凭据。非 Mock 模型名由接入负责人确认后填写；空值表示不可调用。
+provider: mock
+providers:
+  deepseek:
+    small: ""
+    strong: ""
+  qwen:
+    small: ""
+    strong: ""
+  ollama:
+    small: ""
+    strong: ""
+  mock:
+    small: mock-small
+    strong: mock-strong
 
-# provider：四档适配，运行时由环境变量 LLM_PROVIDER 选择，本文件只给默认值
-# provider: mock          # deepseek | qwen | ollama | mock
+tiers:
+  small:
+    max_tokens: 1024
+    temperature: 0.0
+    timeout_s: 30
+  strong:
+    max_tokens: 4096
+    temperature: 0.2
+    timeout_s: 90
 
-# tiers：模型档位定义（轻量档做抽取/分类，强模型做规划/写作/验证）
-# tiers:
-#   small:
-#     model: <待定>
-#     max_tokens: <待定>
-#     temperature: <待定>
-#     timeout_s: <待定>
-#   strong:
-#     model: <待定>
-#     max_tokens: <待定>
-#     temperature: <待定>
-#     timeout_s: <待定>
+routing:
+  planner: strong
+  researcher: small
+  analyst: strong
+  writer: strong
+  verifier: strong
+  reviewer: strong
 
-# routing：角色 → 档位映射（与 agents/*.yaml 的 tier 字段保持一致）
-# routing:
-#   planner: strong       # 拆解任务、生成 DAG
-#   researcher: small     # 多轮检索、事实抽取
-#   analyst: strong       # 数值测算、图表
-#   writer: strong        # 结构化长文撰写
-#   verifier: strong      # 独立打分（提示词与温度须与 writer 不同）
-#   reviewer: strong      # 终审与收敛判定
+# 故障后只切换到已配置模型；切到 Mock 时响应须标记 degraded=true、mock=true。
+fallback:
+  small: [mock]
+  strong: [mock]
 
-# fallback：降级链（强模型不可用时如何退档，避免演示中断）
-# fallback:
-#   strong: [qwen, ollama]
-#   small: [ollama, mock]
-
-# budget：全局成本护栏（与 configs/scheduler.yaml 的预算联动）
-# budget:
-#   max_usd_per_run: <待定>
-#   max_tokens_per_run: <待定>
+budget:
+  max_calls_per_run: 60
