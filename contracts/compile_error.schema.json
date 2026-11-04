@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/compile_error.schema.json",
+  "title": "CompileError —— 工作流编译错误",
+  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 4/10。错误码表是硬约定：新增码必须走 contract-change PR。",
+  "type": "object",
+  "required": ["code", "message"],
+  "properties": {
+    "code": {
+      "enum": [
+        "UNKNOWN_NODE_TYPE",
+        "MISSING_AGENT",
+        "MISSING_TOOL",
+        "BAD_DEPENDS_ON",
+        "CYCLE_OVER_LIMIT",
+        "SCHEMA_INVALID",
+        "TOOL_NOT_ALLOWED",
+        "EMPTY_NODES"
+      ]
+    },
+    "message": { "type": "string", "minLength": 1 },
+    "node_id": { "type": "string" },
+    "field": { "type": "string" },
+    "path": { "type": "string", "description": "出错文件路径，如 workflows/industry_solution.yaml" },
+    "severity": { "enum": ["error", "warning"] },
+    "hint": { "type": "string" }
+  },
+  "additionalProperties": false
+}

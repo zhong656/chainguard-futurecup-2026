@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/task_state.schema.json",
+  "title": "TaskState —— 运行状态与断点续跑快照",
+  "description": "Owner: A（架构与调度）｜冻结时间: 2026-11-07 22:00｜契约编号 9/10。节点状态取值必须与 workflows 中的 node id 对齐；loop_round 上限 3 与 Self-Loop 配置一致。",
+  "type": "object",
+  "required": ["run_id", "trace_id", "status", "nodes", "loop_round", "budget", "contract_version"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "trace_id": { "type": "string" },
+    "status": { "enum": ["pending", "running", "passed", "failed", "aborted"] },
+    "nodes": {
+      "type": "object",
+      "description": "node_id → 状态",
+      "additionalProperties": { "enum": ["pending", "running", "done", "failed", "skipped"] }
+    },
+    "current_node": { "type": "string" },
+    "loop_round": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "budget": {
+      "type": "object",
+      "required": ["calls_used"],
+      "properties": {
+        "calls_used": { "type": "integer", "minimum": 0 },
+        "calls_max": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "checkpoint": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "path": { "type": "string" },
+        "created_at": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "contract_version": { "type": "string", "description": "契约集合版本，用于判断快照是否还能续跑" }
+  },
+  "additionalProperties": false
+}

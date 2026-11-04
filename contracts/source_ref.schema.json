@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/source_ref.schema.json",
+  "title": "SourceRef —— 证据引用单元",
+  "description": "Owner: B（知识库与工具）｜冻结时间: 2026-11-07 22:00｜契约编号 1/10。source_id 由语料入库过程生成，Agent 与模型一律不得自造。",
+  "$defs": {
+    "source_id": {
+      "type": "string",
+      "pattern": "^[a-z]+:[A-Za-z0-9_-]+$",
+      "description": "形如 mv:doc001。冒号前为语料命名空间（小写字母），冒号后为该文档内唯一标识。"
+    }
+  },
+  "type": "object",
+  "required": ["source_id", "doc_id"],
+  "properties": {
+    "source_id": { "$ref": "#/$defs/source_id" },
+    "doc_id": { "type": "string", "minLength": 1 },
+    "file_path": { "type": "string", "description": "相对 knowledge/corpus/ 的路径" },
+    "page": { "type": ["integer", "null"], "minimum": 1 },
+    "char_range": {
+      "type": "array",
+      "items": { "type": "integer", "minimum": 0 },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "text": { "type": "string", "description": "被引用的原文片段" },
+    "hash": { "type": "string", "pattern": "^[a-f0-9]{16,64}$" },
+    "version": { "type": "string" }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/agent_spec.schema.json",
+  "title": "AgentSpec —— 角色定义",
+  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 5/10。agents/*.yaml 必须通过本 Schema 校验；tools 只能引用 src/tools/ 注册表中已存在的工具名。",
+  "type": "object",
+  "required": ["name", "role", "tier", "tools", "output_schema"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "display_name": { "type": "string" },
+    "role": { "type": "string", "minLength": 1 },
+    "tier": { "enum": ["small", "strong"] },
+    "tools": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+      "uniqueItems": true
+    },
+    "input_schema": { "type": "string" },
+    "output_schema": { "type": "string" },
+    "timeout_s": { "type": "integer", "minimum": 1 },
+    "retry": {
+      "type": "object",
+      "properties": { "max_attempts": { "type": "integer", "minimum": 1, "maximum": 5 } },
+      "additionalProperties": false
+    },
+    "temperature": { "type": "number", "minimum": 0, "maximum": 2 },
+    "system_prompt_ref": { "type": "string" }
+  },
+  "additionalProperties": false
+}

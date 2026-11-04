@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/llm_response.schema.json",
+  "title": "LLMResponse —— 模型调用统一响应",
+  "description": "Owner: A（架构与调度）｜冻结时间: 2026-11-07 22:00｜契约编号 8/10。四档适配（deepseek/qwen/ollama/mock）必须收敛到同一结构，否则上层无法切换。",
+  "type": "object",
+  "required": ["provider", "model", "tier", "content", "usage", "latency_ms"],
+  "properties": {
+    "provider": { "enum": ["deepseek", "qwen", "ollama", "mock"] },
+    "model": { "type": "string" },
+    "tier": { "enum": ["small", "strong"] },
+    "content": { "type": "string" },
+    "usage": {
+      "type": "object",
+      "required": ["tokens_in", "tokens_out"],
+      "properties": {
+        "tokens_in": { "type": "integer", "minimum": 0 },
+        "tokens_out": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "latency_ms": { "type": "integer", "minimum": 0 },
+    "finish_reason": { "type": "string" },
+    "degraded": { "type": "boolean", "description": "是否因超时/限流走了降级链路" },
+    "mock": { "type": "boolean" }
+  },
+  "additionalProperties": false
+}

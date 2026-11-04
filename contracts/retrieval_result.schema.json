@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/retrieval_result.schema.json",
+  "title": "RetrievalResult —— 检索结果",
+  "description": "Owner: B（知识库与工具）｜冻结时间: 2026-11-07 22:00｜契约编号 2/10。source_id 一律 $ref 第 1 份契约，禁止在此重定义。",
+  "type": "object",
+  "required": ["query", "mode", "items"],
+  "properties": {
+    "query": { "type": "string", "minLength": 1 },
+    "mode": { "enum": ["vector", "bm25", "hybrid"] },
+    "top_k": { "type": "integer", "minimum": 1 },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source_id", "score"],
+        "properties": {
+          "source_id": { "$ref": "source_ref.schema.json#/$defs/source_id" },
+          "score": { "type": "number", "minimum": 0, "maximum": 1 },
+          "snippet": { "type": "string" },
+          "rank": { "type": "integer", "minimum": 1 }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

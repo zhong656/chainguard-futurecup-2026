@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/workflow.schema.json",
+  "title": "Workflow —— 工作流图定义",
+  "description": "Owner: D（编排与前端）｜冻结时间: 2026-11-07 22:00｜契约编号 6/10。严格说是『含循环边的工作流图』，拓扑上非 DAG；节点类型白名单固定 6 类，新增须走 contract-change。",
+  "type": "object",
+  "required": ["name", "nodes"],
+  "properties": {
+    "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "display_name": { "type": "string" },
+    "version": { "type": "string" },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+          "type": { "enum": ["agent", "tool", "parallel", "condition", "loop", "checkpoint"] },
+          "agent": { "type": "string", "description": "type=agent 时必填，取值须为 agents/ 中已存在的角色 name" },
+          "tool": { "type": "string" },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+            "uniqueItems": true
+          },
+          "when": { "type": "string", "description": "条件边表达式（仅 condition/loop 节点使用）" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "type": { "const": "agent" } }, "required": ["type"] },
+            "then": { "required": ["agent"] }
+          }
+        ],
+        "additionalProperties": false
+      }
+    },
+    "loop": {
+      "type": "object",
+      "properties": {
+        "from": { "type": "string" },
+        "to": { "type": "string" },
+        "max_rounds": { "type": "integer", "minimum": 1, "maximum": 3 },
+        "stop_if_no_gain_rounds": { "type": "integer", "minimum": 1, "maximum": 3 }
+      },
+      "additionalProperties": false
+    },
+    "outputs": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

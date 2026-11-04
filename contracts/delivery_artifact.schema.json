@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/delivery_artifact.schema.json",
+  "title": "DeliveryArtifact —— 可核验交付包",
+  "description": "Owner: A（架构与调度 / 集成）｜冻结时间: 2026-11-08 12:00（依赖的 9 份已于 2026-11-07 22:00 冻结）｜契约编号 10/10。约束：本文件只允许用 $ref 组装既有 9 份契约，禁止重新定义 scorecard / source_id / trace_event 的任何字段；manifest 为本契约自有字段，用于机器复现。",
+  "type": "object",
+  "required": ["solution", "evidence_chain", "scorecard", "trace_bundle", "manifest"],
+  "properties": {
+    "solution": {
+      "type": "object",
+      "required": ["path", "sha256"],
+      "properties": {
+        "path": { "type": "string" },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "sections": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "evidence_chain": {
+      "type": "array",
+      "description": "证据链：仅 source_id 字符串数组，元素定义 $ref 第 1 份契约的 $defs/source_id",
+      "items": { "$ref": "source_ref.schema.json#/$defs/source_id" }
+    },
+    "scorecard": { "$ref": "scorecard.schema.json" },
+    "trace_bundle": {
+      "type": "array",
+      "description": "全链路事件，元素结构 $ref 第 7 份契约",
+      "items": { "$ref": "trace_event.schema.json" }
+    },
+    "manifest": {
+      "type": "object",
+      "description": "可复现的机器凭据（本契约自有字段）",
+      "required": ["genome_version", "commit_sha", "generated_at", "files"],
+      "properties": {
+        "genome_version": { "type": "string", "description": "配置与契约集合的版本标识" },
+        "commit_sha": { "type": "string", "pattern": "^[a-f0-9]{7,40}$" },
+        "generated_at": { "type": "string", "format": "date-time" },
+        "mock": { "type": "boolean" },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "sha256", "bytes"],
+            "properties": {
+              "path": { "type": "string" },
+              "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+              "bytes": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

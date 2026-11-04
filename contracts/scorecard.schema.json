@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/scorecard.schema.json",
+  "title": "ScoreCard —— 验证评分卡",
+  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 3/10。issues[] 必须能定位到段落与修订目标节点，否则 Self-Loop 无法定向回退。",
+  "type": "object",
+  "required": ["run_id", "metrics", "issues", "verdict"],
+  "properties": {
+    "run_id": { "type": "string" },
+    "round": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "score": { "type": "number", "minimum": 0, "maximum": 1 },
+    "threshold": { "type": "number", "minimum": 0, "maximum": 1 },
+    "metrics": {
+      "type": "object",
+      "description": "维度名 → 得分（0..1）。维度集合由 configs/verifier.yaml 的 weights 决定。",
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 1 }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["section", "reason", "suggestion", "target_node", "severity"],
+        "properties": {
+          "section": { "type": "string", "description": "问题所在章节或段落标识" },
+          "reason": { "type": "string" },
+          "suggestion": { "type": "string" },
+          "target_node": { "type": "string", "description": "回退目标节点 id，需存在于 workflows/*.yaml" },
+          "rule_id": { "type": "string", "description": "命中规则编号，如 CITATION_MISSING" },
+          "severity": { "enum": ["blocker", "warning"] },
+          "source_id": { "$ref": "source_ref.schema.json#/$defs/source_id" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "verdict": { "enum": ["pass", "fail", "abort"] }
+  },
+  "additionalProperties": false
+}
