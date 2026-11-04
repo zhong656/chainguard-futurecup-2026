@@ -10,9 +10,15 @@
       "snippet": "平均漏检率约为 2.1%"
     },
     {
-      "source_id": "mv:doc004",
-      "score": 0.71,
+      "source_id": "web:doc007",
+      "score": 0.76,
       "rank": 2,
+      "snippet": "某省级智能制造试点披露的改造投入区间"
+    },
+    {
+      "source_id": "csv:param001",
+      "score": 0.71,
+      "rank": 3,
       "snippet": "单工位改造成本 8–15 万元"
     }
   ]
