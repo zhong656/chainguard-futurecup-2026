@@ -76,27 +76,28 @@
 
 ### C-1 `agent_spec` —— 角色定义
 
-| 问题 | 现状 | 你的决定 |
+| 问题 | 现状 | 你的决定（2026-11-05 定） |
 | --- | --- | --- |
-| 6 个角色各自 `tier` | 样例 writer=strong，其余未定 | |
-| 每个角色的 `tools` 白名单 | 样例 2 个，其余未定 | |
-| `timeout_s` 统一还是分级 | 样例 120s | |
+| 6 个角色各自 `tier` | 样例 writer=strong，其余未定 | **5 strong + 1 small**：仅 `researcher=small`（高频、低难度、产出靠工具）；planner/analyst/writer/verifier/reviewer 全 strong。与 `configs/llm.yaml` 的 routing 一致 |
+| 每个角色的 `tools` 白名单 | 样例 2 个，其余未定 | **冻结 8 个工具名**，按最小权限分配：planner `[knowledge_retrieve]`；researcher `[knowledge_retrieve, doc_parse, web_fetch_optional]`；analyst `[python_sandbox, chart_render, knowledge_retrieve]`；writer `[template_render, knowledge_retrieve]`；verifier `[rule_verifier, knowledge_retrieve]`；reviewer `[trace_read, knowledge_retrieve]`（只读） |
+| `timeout_s` 统一还是分级 | 样例 120s | **分级**：planner/reviewer 90；verifier 120；writer/researcher 180；analyst 240（沙箱+渲染最慢）。重试：researcher 3 次，其余 2 次 |
+| `temperature` | 只有 writer 有值 | writer 0.3、verifier **0.0**（必须拉开，防同源偏差）、reviewer 0.1、planner 0.2、researcher 0.0、analyst 0.1 |
 
 ### C-2 `scorecard` —— 评分卡（**Self-Loop 靠它回退**）
 
-| 问题 | 现状 | 你的决定 |
+| 问题 | 现状 | 你的决定（2026-11-05 定） |
 | --- | --- | --- |
-| 维度到底几个、叫什么 | 样例给了 5 个：citation/consistency/coverage/logic/format | |
-| 权重分配 | 未定（`metrics` 只装分数，权重在 `configs/verifier.yaml`） | |
-| `pass_threshold` | 样例 0.85 | |
-| `issue.target_node` 如何保证存在 | 未校验（可加进 `check_contracts`） | |
+| 维度到底几个、叫什么 | 样例给了 5 个：citation/consistency/coverage/logic/format | **就 5 维，不增不减**：增维要同时改 schema + verifier.yaml + 前端评分卡三处，冻结前不做 |
+| 权重分配 | 未定（`metrics` 只装分数，权重在 `configs/verifier.yaml`） | **0.30 / 0.20 / 0.20 / 0.20 / 0.10**（citation 最重，format 机器可判故最低），合计 1.00，已写进 `configs/verifier.yaml` |
+| `pass_threshold` | 样例 0.85 | **0.85**，另加**一票否决**：任一维 < 0.60 或存在 `severity=blocker` 的 issue → 直接 fail（防「引用分高但缺章节」被加权分掩盖） |
+| `issue.target_node` 如何保证存在 | 未校验（可加进 `check_contracts`） | 本轮对齐 `contracts/examples/workflow.good.json` 已冻结的 7 个节点 id：**plan / retrieve / fanout / write / gate / revise / snap**（原来写的 `analyze` 不存在，已改为 `fanout`——数值不一致由并行分支里的分析产出，回退到 fanout 重算）。`industry_solution.yaml` 必须沿用这 7 个 id；真正的存在性校验留给 A 加进 `check_contracts.py`（`scripts/` 归 A，C 不越界改） |
 
 ### C-3 `compile_error` —— 编译错误码
 
-| 问题 | 现状 | 你的决定 |
+| 问题 | 现状 | 你的决定（2026-11-05 定） |
 | --- | --- | --- |
-| 8 个码够不够 | 见 schema 枚举 | |
-| 工具超时/沙箱拒绝/循环超限归哪个码 | 未定，可能缺码 | |
+| 8 个码够不够 | 见 schema 枚举 | **不够，缺 3 类**：工具超时 / 沙箱拒绝 / 循环超限。但加码属契约变更，需 Issue + 非 Owner approve，**本轮不动枚举**，只留建议 |
+| 工具超时/沙箱拒绝/循环超限归哪个码 | 未定，可能缺码 | 建议新增 `TOOL_TIMEOUT`、`SANDBOX_DENIED`、`LOOP_OVER_LIMIT`；过渡期映射：沙箱拒绝暂用 `TOOL_NOT_ALLOWED`，循环超限暂用 `CYCLE_OVER_LIMIT`（语义偏窄，仅临时） |
 
 ---
 
@@ -106,18 +107,10 @@
 
 | 问题 | 现状 | 你的决定 |
 | --- | --- | --- |
-| 6 类节点白名单是否够 | agent/tool/parallel/condition/loop/checkpoint | 保留六类；agent 必带角色名，tool 必带工具名，condition 必带 when。 |
-| `depends_on` 为空 = 并行还是非法 | 原未定 | 省略或 [] 表示唯一入口；多个入口非法。其余节点等待全部依赖完成。并行分支显式经 fanout 汇入 analyze/outline，再于 write 汇合。 |
-| `loop.max_rounds` 固定 3 | 是 | 固定 3 次追加修订，初稿 round=0；连续两轮 score 不超过历史最佳值即停，未达标以失败结束。 |
-| `when` 表达式语法 | 原未定 | Python 比较表达式子集，见下；AST 白名单校验，不运行任意代码。 |
-
-**D-1 执行约定（2026-11-05，待 A/C 会签）**
-
-- `when` 只允许 condition/loop 节点使用。变量固定 `score`、`threshold`、`round`；前两者取当前 scorecard，round 为已完成修订次数。常量为非负有限数；操作符只允许 `< <= > >= == !=`、`and/or/not` 和括号；禁止调用、属性、索引和算术。整个表达式须为比较或布尔组合。
-- `gate.when = score < threshold`：真分支仅进入后继 loop 节点 revise；假分支仅进入普通后继 review，两条分支互斥。未选分支跳过，不阻塞另一分支。revise.when 为修订护栏，护栏不满足或无提升上限触发时失败终止，不能转为成功终审。
-- `loop.from = revise`、`loop.to = write` 是默认回边，重跑 write → verify → gate；普通 depends_on 必须无环。后续 LoopController 可按 scorecard 的 target_node 从 analyze 或 write 定向回退，并重算受影响下游，保留未受影响分支结果；本次仅定接口，不实现执行器。
-- 对外节点 id 固定包含 `analyze`、`write`，供 C 的 scorecard 引用；6 个角色名为 planner/researcher/analyst/writer/verifier/reviewer，与 C 的 agents 文件 name 对齐。
-- Schema 检查字段与循环护栏；`src/dag_compiler.py` 检查唯一入口、重复 id、悬空依赖、普通依赖环、回边端点及表达式语法。`tests/test_dag.py` 同时核对 YAML/JSON 正例一致、scorecard 目标存在和并行汇合关系；随 `python scripts/check.py` 自动运行。
+| 6 类节点白名单是否够 | agent/tool/parallel/condition/loop/checkpoint | |
+| `depends_on` 为空 = 并行还是非法 | 未定（建议：与 `parallel` 节点同时存在时才算并行） | |
+| `loop.max_rounds` 固定 3 | 是 | |
+| `when` 表达式语法 | 样例写了 `score < threshold`，语法未定 | |
 
 ### D-2 `trace_event` —— 留痕事件
 
