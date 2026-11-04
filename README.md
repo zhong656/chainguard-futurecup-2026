@@ -117,6 +117,8 @@ chainguard-futurecup-2026/
 
 > 红线：不压到 11/20 深夜提交；11/19 完成全部材料，11/20 只做上传与复核。
 
+> **先读这里**：[交接公告](docs/HANDOFF.md) —— 当前状态、拉取方式、四个已踩过的坑
+
 ## 7. 协作与安全
 
 - 协作规范见 [CONTRIBUTING.md](CONTRIBUTING.md)：`main` 仅经 PR 合并、禁止 force push、PR 需人工复核。
