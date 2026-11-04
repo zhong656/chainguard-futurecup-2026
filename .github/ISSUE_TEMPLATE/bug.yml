@@ -1,0 +1,94 @@
+name: 缺陷
+description: 行为与预期不符，需要可复现的信息
+title: "[缺陷] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        报缺陷前先确认：**能复现、能定位到环节、有最小输入**。
+        涉及运行时的缺陷请附 `trace_id`，否则无法比对重放。
+
+  - type: dropdown
+    id: module
+    attributes:
+      label: 出问题的模块
+      options:
+        - KnowledgeHub 知识库 / 检索
+        - AgentRegistry 角色加载
+        - DAG 编译器 / 工作流
+        - Scheduler 调度 / 超时 / 重试
+        - Verifier 规则验证 / 评分卡
+        - LoopController 自我循环
+        - Web 控制台 / SSE
+        - 部署 / Docker Compose
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: trace
+    attributes:
+      label: trace_id（如涉及运行）
+      placeholder: 例：20261112-1530-a1b2c3
+    validations:
+      required: false
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      placeholder: |
+        1. docker compose up -d
+        2. 控制台输入「...」
+        3. 观察到 ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际结果
+      description: 贴关键日志即可，**不要贴完整 trace、不要贴任何 Key**
+    validations:
+      required: true
+
+  - type: dropdown
+    id: provider
+    attributes:
+      label: 模型档位
+      options:
+        - mock（离线复现）
+        - deepseek
+        - qwen
+        - ollama
+        - 与档位无关
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: 环境
+      placeholder: Windows 11 / Python 3.11 / Docker 24.x
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 严重程度
+      options:
+        - 阻塞（演示跑不起来）
+        - 严重（结果不可信 / 引用缺失）
+        - 一般（体验或输出瑕疵）
+        - 轻微（文案 / 样式）
+    validations:
+      required: true

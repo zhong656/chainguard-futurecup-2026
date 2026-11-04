@@ -1,0 +1,99 @@
+name: 任务卡
+description: 一项开发 / 材料任务，必须对齐赛题考察点与阶段
+title: "[任务] "
+labels: ["P1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        任务卡用于拆解工作。**每张卡必须能回答：它对应六项考察点中的哪一项、证据长什么样。**
+        纯文字描述不计分，能截图 / 能跑 / 有数据才算完成。
+
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 所属阶段
+      description: 对应看板的 0–6 列
+      options:
+        - 0 立项
+        - 1 方案设计
+        - 2 核心框架
+        - 3 验证闭环
+        - 4 前端与工程化
+        - 5 材料提交
+        - 6 决赛冲刺
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 优先级
+      options:
+        - P0 必须完成（六项考察点硬证据 / 提交材料）
+        - P1 应当完成（演示与工程化）
+        - P2 可选加分
+    validations:
+      required: true
+
+  - type: dropdown
+    id: capability
+    attributes:
+      label: 对应赛题考察点
+      options:
+        - 1 知识库定义与集成
+        - 2 Agent 团队定义
+        - 3 工作流编排
+        - 4 动态调度
+        - 5 自我循环 Self-Loop
+        - 6 结果验证与反馈优化
+        - 附加 可运行平台系统
+        - 附加 完整技术方案与演示成果
+        - 非考察点（工程杂项）
+    validations:
+      required: true
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: 要做什么
+      description: 一段话说清目标与边界，不写实现细节
+      placeholder: 实现 KnowledgeHub 的混合检索，保证 20 条查询命中率 ≥ 90%
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 可判定、可复现的条件，最好带数字
+      placeholder: |
+        - 20 条标准查询命中率 ≥ 90%
+        - 任一 source_id 可回溯到原文页码与字符区间
+        - 离线模式下全流程可跑通
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: 负责人
+      placeholder: A / B / C / D
+    validations:
+      required: true
+
+  - type: input
+    id: due
+    attributes:
+      label: 截止日期
+      placeholder: "2026-11-12"
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: 完成后提交什么证据
+      placeholder: 截图 / 测试报告 / 录屏 / 指标数据
+    validations:
+      required: false

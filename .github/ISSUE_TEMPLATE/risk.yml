@@ -1,0 +1,91 @@
+name: 风险
+description: 进度、技术、合规或演示风险，需要有缓解措施与责任人
+title: "[风险] "
+labels: ["P1"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        记录风险不是为了留痕，是为了**有人认领、有动作、有触发条件**。
+        只写「可能会延期」不算风险项，要写清「延期几天、影响哪项证据、怎么补救」。
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: 风险类别
+      options:
+        - 进度（做不完）
+        - 技术（方案不可行 / 依赖不稳）
+        - 质量（结果不可信 / 验证不通过）
+        - 合规（赛事规则 / 数据版权 / 信息公开）
+        - 演示（现场翻车 / 环境不可复现）
+        - 人员（请假 / 分工失衡）
+    validations:
+      required: true
+
+  - type: textarea
+    id: desc
+    attributes:
+      label: 风险描述
+      placeholder: 例：LangGraph checkpoint 与自研 DAG 编译器状态不一致，可能导致续跑失效
+    validations:
+      required: true
+
+  - type: dropdown
+    id: probability
+    attributes:
+      label: 发生概率
+      options:
+        - 高（>50%）
+        - 中（20%–50%）
+        - 低（<20%）
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: 影响程度
+      options:
+        - 致命（丢分或无法提交）
+        - 严重（丢一项证据）
+        - 中等（影响观感）
+        - 轻微
+    validations:
+      required: true
+
+  - type: textarea
+    id: mitigation
+    attributes:
+      label: 缓解措施
+      description: 具体动作 + 时限，不要写「加强关注」
+      placeholder: |
+        - 11/11 前用 mock 环境跑通最小续跑用例
+        - 11/16 联调时做一次断点续跑演练
+    validations:
+      required: true
+
+  - type: textarea
+    id: trigger
+    attributes:
+      label: 触发条件与应对
+      description: 什么信号出现就算风险成真？成真后砍什么、保什么？
+      placeholder: 若 11/15 晚 LoopController 仍不收敛 → 按保底顺序砍 A/B 优化，保住规则验证器与 Self-Loop 演示
+    validations:
+      required: true
+
+  - type: input
+    id: owner
+    attributes:
+      label: 负责人
+      placeholder: A / B / C / D
+    validations:
+      required: true
+
+  - type: input
+    id: review_date
+    attributes:
+      label: 下次复核日期
+      placeholder: "2026-11-12"
+    validations:
+      required: true
