@@ -1,19 +1,21 @@
 # ============================================================
-# agents/planner.yaml —— Planner 规划师（占位）
+# agents/planner.yaml —— Planner 规划师
 # ------------------------------------------------------------
 # 用途：把用户需求拆解为可执行的 DAG 计划，并产出验收清单。
 # 输入：用户需求文本 + 可用角色/工具清单
 # 输出：Plan{steps, acceptance_criteria, complexity}
-# 阶段 2（11/10 AgentRegistry）落地；本阶段仅声明字段，不写提示词正文。
+# 关键约束：只读；节点 id 唯一、边不成环，产物须能被 workflow 契约校验。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
 # ============================================================
 
-# name: planner
-# display_name: 规划师
-# role: 拆解任务、生成 DAG 执行计划与验收清单
-# tier: strong                    # 模型档位，见 configs/llm.yaml
-# tools: [knowledge_retrieve]     # 工具白名单（只读检索）
-# input_schema: UserRequest
-# output_schema: Plan
-# timeout_s: <待定>
-# retry: {max_attempts: <待定>}
-# system_prompt_ref: prompts/planner.md   # 提示词外置，阶段 2 落盘
+name: planner
+display_name: 规划师
+role: 拆解任务、生成 DAG 执行计划与验收清单
+tier: strong                     # 长上下文推理；与 configs/llm.yaml routing.planner 保持一致
+tools: [knowledge_retrieve]      # 只读检索，不给写库能力
+input_schema: UserRequest
+output_schema: Plan
+timeout_s: 90                    # 分级超时最短档：纯生成、无外部 IO
+retry: {max_attempts: 2}
+temperature: 0.2
+system_prompt_ref: prompts/planner.md

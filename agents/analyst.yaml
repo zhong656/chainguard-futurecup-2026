@@ -1,22 +1,24 @@
 # ============================================================
-# agents/analyst.yaml —— Analyst 分析师（占位）
+# agents/analyst.yaml —— Analyst 分析师
 # ------------------------------------------------------------
 # 用途：数值测算、参数对比、生成图表，支撑方案中的成本与 ROI 部分。
 # 输入：EvidencePool + 测算需求
 # 输出：Analysis{tables, charts, assumptions}
 # 关键约束：所有计算必须在受限沙箱内执行，结果可复算。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
+# ------------------------------------------------------------
+# 注：沙箱参数（allow_imports / max_output_bytes）不属 agent_spec
+#     （schema 禁止多余字段），落在工具侧 python_sandbox 的默认配置里（归 B）。
 # ============================================================
 
-# name: analyst
-# display_name: 分析师
-# role: 数值测算、参数对比、生成图表
-# tier: strong
-# tools: [python_sandbox, chart_render, knowledge_retrieve]
-# input_schema: AnalysisRequest
-# output_schema: Analysis
-# sandbox:
-#   timeout_s: <待定>
-#   allow_imports: [math, statistics, pandas, matplotlib]
-#   max_output_bytes: <待定>
-# timeout_s: <待定>
-# system_prompt_ref: prompts/analyst.md
+name: analyst
+display_name: 分析师
+role: 数值测算、参数对比、生成图表
+tier: strong                     # 要读懂测算口径并解释假设，不能退到 small
+tools: [python_sandbox, chart_render, knowledge_retrieve]
+input_schema: AnalysisRequest
+output_schema: Analysis
+timeout_s: 240                   # 最长档：沙箱执行 + 图表渲染
+retry: {max_attempts: 2}
+temperature: 0.1                 # 数值场景只要一点点表述自由度
+system_prompt_ref: prompts/analyst.md

@@ -1,5 +1,5 @@
 # ============================================================
-# agents/verifier.yaml —— Verifier 验证员（占位）
+# agents/verifier.yaml —— Verifier 验证员
 # ------------------------------------------------------------
 # 用途：独立打分、定位问题段落、生成可执行的修订指令。
 # 输入：Draft + EvidencePool
@@ -8,18 +8,21 @@
 #   1) 提示词与温度必须与 writer **不同**，避免同源偏差；
 #   2) issues[].target_node 用于驱动 Self-Loop 定向回退；
 #   3) 与 configs/verifier.yaml 的权重、阈值保持一致。
+# 契约：contracts/agent_spec.schema.json（Owner: C，2026-11-07 22:00 冻结）
+# ------------------------------------------------------------
+# 注：issues 必填字段与 max_items 不属 agent_spec，落在
+#     contracts/scorecard.schema.json（issues[].required）与
+#     configs/verifier.yaml（scorecard.veto / pass_threshold）。
 # ============================================================
 
-# name: verifier
-# display_name: 验证员
-# role: 独立打分、定位问题段落、生成修订指令
-# tier: strong
-# tools: [rule_verifier, knowledge_retrieve]
-# input_schema: VerificationRequest
-# output_schema: ScoreCard
-# temperature: <待定>              # 必须与 writer 不同
-# system_prompt_ref: prompts/verifier.md
-# issues:
-#   require_fields: [section, reason, suggestion, target_node]
-#   max_items: <待定>
-# verdict_threshold_ref: configs/verifier.yaml#scorecard.pass_threshold
+name: verifier
+display_name: 验证员
+role: 独立打分、定位问题段落、生成修订指令
+tier: strong                     # 判分要能识破逻辑跳跃，不能降档
+tools: [rule_verifier, knowledge_retrieve]
+input_schema: VerificationRequest
+output_schema: ScoreCard
+timeout_s: 120                   # 只读长文 + 打分，标准档
+retry: {max_attempts: 2}
+temperature: 0.0                 # 必须与 writer(0.3) 不同：判分不采样
+system_prompt_ref: prompts/verifier.md
