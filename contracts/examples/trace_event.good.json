@@ -1,0 +1,14 @@
+{
+  "event_id": "e-0001",
+  "trace_id": "trace-20261113-001",
+  "run_id": "run-20261113-001",
+  "ts": "2026-11-13T14:02:11Z",
+  "node_id": "retrieve",
+  "kind": "end",
+  "duration_ms": 1840,
+  "attempt": 1,
+  "round": 0,
+  "input_digest": "sha256:9f2c...",
+  "output_digest": "sha256:41ab...",
+  "config_version": "cfg-0.1.0"
+}

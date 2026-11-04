@@ -1,0 +1,11 @@
+{
+  "provider": "deepseek",
+  "model": "deepseek-chat",
+  "tier": "strong",
+  "content": "## 现状痛点\n……",
+  "usage": { "tokens_in": 1240, "tokens_out": 860 },
+  "latency_ms": 2380,
+  "finish_reason": "stop",
+  "degraded": false,
+  "mock": false
+}

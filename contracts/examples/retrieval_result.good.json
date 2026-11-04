@@ -1,0 +1,19 @@
+{
+  "query": "机器视觉 质检 改造成本 回收周期",
+  "mode": "hybrid",
+  "top_k": 8,
+  "items": [
+    {
+      "source_id": "mv:doc001",
+      "score": 0.83,
+      "rank": 1,
+      "snippet": "平均漏检率约为 2.1%"
+    },
+    {
+      "source_id": "mv:doc004",
+      "score": 0.71,
+      "rank": 2,
+      "snippet": "单工位改造成本 8–15 万元"
+    }
+  ]
+}

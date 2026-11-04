@@ -1,0 +1,9 @@
+{
+  "code": "MISSING_AGENT",
+  "message": "节点 write 引用的角色 writer 未在 agents/ 中定义",
+  "node_id": "write",
+  "field": "agent",
+  "path": "workflows/industry_solution.yaml",
+  "severity": "error",
+  "hint": "在 agents/writer.yaml 中定义该角色，或修正节点上的 agent 字段"
+}

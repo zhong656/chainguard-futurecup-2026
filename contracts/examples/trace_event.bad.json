@@ -1,0 +1,7 @@
+{
+  "event_id": "e-0002",
+  "trace_id": "trace-20261113-001",
+  "ts": "2026-11-13T14:02:11Z",
+  "node_id": "retrieve",
+  "kind": "finished"
+}

@@ -1,0 +1,21 @@
+{
+  "name": "industry_solution",
+  "display_name": "产业技术方案自动生成与可信交付",
+  "version": "0.1.0",
+  "nodes": [
+    { "id": "plan", "type": "agent", "agent": "planner" },
+    { "id": "retrieve", "type": "agent", "agent": "researcher", "depends_on": ["plan"] },
+    { "id": "fanout", "type": "parallel", "depends_on": ["retrieve"] },
+    { "id": "write", "type": "agent", "agent": "writer", "depends_on": ["fanout"] },
+    { "id": "gate", "type": "condition", "depends_on": ["write"], "when": "score < threshold" },
+    { "id": "revise", "type": "loop", "depends_on": ["gate"] },
+    { "id": "snap", "type": "checkpoint", "depends_on": ["revise"] }
+  ],
+  "loop": {
+    "from": "revise",
+    "to": "gate",
+    "max_rounds": 3,
+    "stop_if_no_gain_rounds": 2
+  },
+  "outputs": ["solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl"]
+}

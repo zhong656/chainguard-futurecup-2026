@@ -1,0 +1,10 @@
+{
+  "source_id": "mv:doc001",
+  "doc_id": "doc001",
+  "file_path": "corpus/machine_vision_nist_2024.pdf",
+  "page": 12,
+  "char_range": [120, 268],
+  "text": "机器视觉质检系统在中小型精密零件产线的平均漏检率约为 2.1%，主要来源于光源稳定性与工件表面反光。",
+  "hash": "a1b2c3d4e5f60718",
+  "version": "v1"
+}

@@ -1,0 +1,9 @@
+{
+  "run_id": "run-20261113-001",
+  "trace_id": "trace-20261113-001",
+  "status": "running",
+  "nodes": {},
+  "loop_round": 5,
+  "budget": { "calls_used": 0 },
+  "contract_version": "0.1.0"
+}

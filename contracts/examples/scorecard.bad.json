@@ -1,0 +1,13 @@
+{
+  "run_id": "run-20261113-001",
+  "metrics": {},
+  "issues": [
+    {
+      "section": "3.2 数据方案",
+      "reason": "缺少引用",
+      "suggestion": "补充引用",
+      "severity": "blocker"
+    }
+  ],
+  "verdict": "fail"
+}

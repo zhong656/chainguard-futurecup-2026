@@ -1,0 +1,25 @@
+{
+  "run_id": "run-20261113-001",
+  "round": 1,
+  "score": 0.78,
+  "threshold": 0.85,
+  "metrics": {
+    "citation": 0.72,
+    "consistency": 0.9,
+    "coverage": 1.0,
+    "logic": 0.8,
+    "format": 1.0
+  },
+  "issues": [
+    {
+      "section": "3.2 数据方案",
+      "reason": "该段结论未回填任何 source_id，属于不可核验陈述",
+      "suggestion": "从证据池补充至少 1 条 source_id 并重写该段",
+      "target_node": "write",
+      "rule_id": "CITATION_MISSING",
+      "severity": "blocker",
+      "source_id": "mv:doc004"
+    }
+  ],
+  "verdict": "fail"
+}

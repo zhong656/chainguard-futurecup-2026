@@ -1,0 +1,40 @@
+{
+  "solution": {
+    "path": "solution.md",
+    "sha256": "3f786850e387550fdab836ed7e6dc881de23001b7ec6b1c3b0f0a0b3a0f0c1d2",
+    "sections": ["现状痛点", "技术选型", "数据方案", "实施阶段", "成本与ROI", "风险与合规"]
+  },
+  "evidence_chain": ["mv:doc001", "mv:doc004"],
+  "scorecard": {
+    "run_id": "run-20261113-001",
+    "round": 2,
+    "score": 0.88,
+    "threshold": 0.85,
+    "metrics": { "citation": 0.9, "consistency": 0.88, "coverage": 1.0, "logic": 0.85, "format": 1.0 },
+    "issues": [],
+    "verdict": "pass"
+  },
+  "trace_bundle": [
+    {
+      "event_id": "e-0001",
+      "trace_id": "trace-20261113-001",
+      "ts": "2026-11-13T14:02:11Z",
+      "node_id": "retrieve",
+      "kind": "end",
+      "duration_ms": 1840
+    }
+  ],
+  "manifest": {
+    "genome_version": "0.1.0",
+    "commit_sha": "0323521",
+    "generated_at": "2026-11-13T14:10:00Z",
+    "mock": true,
+    "files": [
+      {
+        "path": "solution.md",
+        "sha256": "3f786850e387550fdab836ed7e6dc881de23001b7ec6b1c3b0f0a0b3a0f0c1d2",
+        "bytes": 4212
+      }
+    ]
+  }
+}

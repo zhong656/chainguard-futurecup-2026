@@ -1,0 +1,6 @@
+{
+  "name": "w1",
+  "nodes": [
+    { "id": "n1", "type": "parallel_split" }
+  ]
+}

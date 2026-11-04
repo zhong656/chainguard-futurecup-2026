@@ -1,0 +1,13 @@
+{
+  "name": "writer",
+  "display_name": "撰写员",
+  "role": "按模板生成结构化方案书，并强制把引用回填到每一段",
+  "tier": "strong",
+  "tools": ["template_render", "knowledge_retrieve"],
+  "input_schema": "WritingTask",
+  "output_schema": "Draft",
+  "timeout_s": 120,
+  "retry": { "max_attempts": 2 },
+  "temperature": 0.3,
+  "system_prompt_ref": "prompts/writer.md"
+}

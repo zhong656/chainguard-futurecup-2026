@@ -182,6 +182,64 @@ def check_configs(ctx: dict) -> None:
             add(WARN, f"配置待填 {pattern}", f"{len(empty)} 份仍是注释占位：{', '.join(empty)}", owner)
 
 
+def check_examples(ctx: dict) -> None:
+    """8) 正反例：good 必须通过、bad 必须被拒（反例不过 = schema 太松）。"""
+    try:
+        from _schema import validator as make_validator  # noqa: PLC0415
+    except ImportError:
+        return
+
+    ex_dir = CONTRACTS / "examples"
+    if not ex_dir.exists():
+        add(WARN, "正反例", "contracts/examples/ 尚未建立", "A")
+        return
+
+    pairs: dict[str, dict[str, Path]] = {}
+    for f in sorted(ex_dir.glob("*.json")):
+        stem = f.name[: -len(".json")]
+        if stem.endswith(".good"):
+            pairs.setdefault(stem[: -len(".good")], {})["good"] = f
+        elif stem.endswith(".bad"):
+            pairs.setdefault(stem[: -len(".bad")], {})["bad"] = f
+        else:
+            add(WARN, f"正反例命名 {f.name}", "应以 .good.json / .bad.json 结尾", "A")
+
+    ok_count = 0
+    for name, pair in sorted(pairs.items()):
+        schema_name = f"{name}.schema.json"
+        if schema_name not in ctx["docs"]:
+            add(ERROR, f"正反例 {name}", f"找不到契约 {schema_name}", "A")
+            continue
+        v = make_validator(schema_name, ctx["docs"])
+        good, bad = pair.get("good"), pair.get("bad")
+        if good is None or bad is None:
+            add(WARN, f"正反例 {name}", f"缺少 {'.good' if good is None else '.bad'} 样例", "-")
+            continue
+
+        passed = True
+        for kind, path in (("good", good), ("bad", bad)):
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except Exception as exc:  # noqa: BLE001
+                add(ERROR, f"正反例 {name}.{kind}", f"JSON 解析失败：{exc}", "-")
+                passed = False
+                continue
+            errs = list(v.iter_errors(data))
+            if kind == "good" and errs:
+                e = errs[0]
+                where = "/".join(map(str, e.path)) or "<root>"
+                add(ERROR, f"正例未通过 {name}", f"{where}: {e.message[:120]}", "-")
+                passed = False
+            elif kind == "bad" and not errs:
+                add(ERROR, f"反例未被拒 {name}", "这份错误样例居然通过 → schema 过松", "-")
+                passed = False
+        if passed:
+            ok_count += 1
+
+    if ok_count:
+        add(OK, "正反例", f"{ok_count} 组全部符合预期（正例通过、反例被拒）")
+
+
 def check_owners() -> None:
     """4) docs/owners.yaml 覆盖全部一级目录。"""
     try:
@@ -277,6 +335,7 @@ def main() -> int:
     if ctx:
         check_refs(ctx)
         check_configs(ctx)
+        check_examples(ctx)
     check_owners()
     check_requirements()
     check_source_ids()

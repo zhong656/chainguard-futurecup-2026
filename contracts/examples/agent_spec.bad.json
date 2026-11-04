@@ -1,0 +1,7 @@
+{
+  "name": "Writer Bot",
+  "role": "写东西",
+  "tier": "large",
+  "tools": ["fs.write"],
+  "output_schema": "Draft"
+}
