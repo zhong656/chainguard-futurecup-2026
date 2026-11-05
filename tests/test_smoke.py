@@ -12,10 +12,11 @@ def test_repo_skeleton_exists() -> None:
 
 
 def test_contracts_present() -> None:
-    """10 份契约必须齐全。"""
+    """11 份契约必须齐全。"""
     contracts = sorted(p.name for p in (ROOT / "contracts").glob("*.schema.json"))
-    assert len(contracts) == 10, f"契约数量应为 10，实际 {len(contracts)}：{contracts}"
+    assert len(contracts) == 11, f"契约数量应为 11，实际 {len(contracts)}：{contracts}"
     assert "delivery_artifact.schema.json" in contracts
+    assert "draft.schema.json" in contracts
 
 
 def test_no_secret_files_tracked() -> None:

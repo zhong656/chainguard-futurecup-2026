@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chainguard/contracts/draft.schema.json",
+  "title": "Draft —— 方案书草稿",
+  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 11/11。补上 agent_spec.output_schema 里 \"Draft\" 的悬空引用：writer 产出、verifier 读取。结构校验只管形状，引用缺失属于质量问题，由 rule_checker 报 CITATION_MISSING，不在本 Schema 里强制。",
+  "type": "object",
+  "required": ["run_id", "sections"],
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "round": { "type": "integer", "minimum": 0, "maximum": 3 },
+    "sections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "content"],
+        "properties": {
+          "title": { "type": "string", "minLength": 1 },
+          "content": { "type": "string" },
+          "citations": {
+            "type": "array",
+            "description": "本段落引用的证据 ID；元素定义 $ref 第 1 份契约的 $defs/source_id，不在此重写正则",
+            "items": { "$ref": "source_ref.schema.json#/$defs/source_id" },
+            "uniqueItems": true
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
