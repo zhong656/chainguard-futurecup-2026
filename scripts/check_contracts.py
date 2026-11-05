@@ -137,10 +137,12 @@ def check_refs(ctx: dict) -> None:
 
 
 def check_configs(ctx: dict) -> None:
-    """3) agents/*.yaml 与 workflows/*.yaml 符合契约；空文件仅告警。"""
+    """3) 配置符合契约；角色工具须已注册且符合只读声明。"""
     try:
         import yaml  # noqa: PLC0415
         from _schema import validator as make_validator  # noqa: PLC0415
+        sys.path.insert(0, str(ROOT / "src"))
+        from tools.registry import TOOLS, unknown_tools  # noqa: PLC0415
     except ImportError as exc:  # pragma: no cover
         add(ERROR, "依赖缺失", f"需要 pyyaml + jsonschema：{exc}", "A")
         return
@@ -165,6 +167,14 @@ def check_configs(ctx: dict) -> None:
             if data is None:
                 empty.append(f.relative_to(ROOT).as_posix())
                 continue
+            if owner == "C" and isinstance(data, dict) and isinstance(data.get("tools"), list):
+                missing = unknown_tools(data["tools"])
+                if missing:
+                    add(ERROR, f"未注册工具 {f.relative_to(ROOT)}", f"{missing}（见 src/tools/registry.py）", owner)
+                elif data.get("read_only") is True:
+                    writable = [name for name in data["tools"] if not TOOLS[name].read_only]
+                    if writable:
+                        add(ERROR, f"只读工具越权 {f.relative_to(ROOT)}", f"{writable} 具有副作用", owner)
             errs = sorted(validator.iter_errors(data), key=lambda e: list(e.path))
             if errs:
                 first = errs[0]
@@ -311,10 +321,10 @@ def check_owners() -> None:
 
 
 def check_requirements() -> None:
-    """5) requirements.txt 依赖是否锁定版本（冻结前 WARN，冻结后应改 ERROR）。"""
+    """5) requirements.txt 中每个直接依赖必须锁定确切版本。"""
     path = ROOT / "requirements.txt"
     if not path.exists():
-        add(WARN, "依赖清单", "缺少 requirements.txt", "A")
+        add(ERROR, "依赖清单", "缺少 requirements.txt", "A")
         return
     deps = []
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -323,7 +333,7 @@ def check_requirements() -> None:
             deps.append(line)
     unpinned = [d for d in deps if "==" not in d]
     if unpinned:
-        add(WARN, "依赖锁定", f"{len(unpinned)}/{len(deps)} 个依赖未锁版本（11/07 冻结前必须回填）", "A")
+        add(ERROR, "依赖锁定", f"{len(unpinned)}/{len(deps)} 个依赖未锁版本", "A")
     else:
         add(OK, "依赖锁定", f"{len(deps)} 个依赖全部锁定")
 
