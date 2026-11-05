@@ -18,22 +18,22 @@ make check  ≡  python scripts/check.py
 
 四个步骤，任一失败即整体失败：
 
-| 步骤 | 内容 | 失败含义 |
-|---|---|---|
-| 语法 | `scripts/`、`src/` 下 Python 可解析 | 代码根本跑不起来 |
-| 契约与一致性 | `$ref` 可解析、`agents/` `workflows/` 符合 Schema、目录归属齐全、`source_id` 规范、依赖锁版本 | 接口或归属已漂移 |
-| 单元测试 | `pytest -q tests` | 行为回归 |
-| Mock 端到端 | 生成交付包并通过 `delivery_artifact` 契约 | 交付物结构不成立 |
+  步骤   内容   失败含义  
+ --- --- --- 
+  语法   `scripts/`、`src/` 下 Python 可解析   代码根本跑不起来  
+  契约与一致性   `$ref` 可解析、`agents/` `workflows/` 符合 Schema、目录归属齐全、`source_id` 规范、依赖锁版本   接口或归属已漂移  
+  单元测试   `pytest -q tests`   行为回归  
+  Mock 端到端   生成交付包并通过 `delivery_artifact` 契约   交付物结构不成立  
 
 **Windows 没装 `make` 时，跑 `python scripts/check.py` 就是同一条命令**——这是刻意的设计，避免"本地和 CI 不是一回事"。
 
 ## 三、钩子不是标准，CI 才是
 
-| 层 | 触发 | 内容 | 定位 |
-|---|---|---|---|
-| pre-commit | 每次 commit | 快检（YAML 可解析 / 契约可解析） | 提前反馈 |
-| pre-push | 每次 push | 全量 `make check` | 提前反馈 |
-| CI | push / PR | 全量 `make check` | **唯一准入门槛** |
+  层   触发   内容   定位  
+ --- --- --- --- 
+  pre-commit   每次 commit   快检（YAML 可解析 / 契约可解析）   提前反馈  
+  pre-push   每次 push   全量 `make check`   提前反馈  
+  CI   push / PR   全量 `make check`   **唯一准入门槛**  
 
 **绕过 hook 不违规，CI 红灯合入才违规。** hook 可以 `--no-verify` 跳过、可以不装、可以换机器；GitHub 触发的 CI 个人跳不过，所以标准只能放在那里。
 
@@ -43,10 +43,10 @@ make check  ≡  python scripts/check.py
 
 **冻结时间**
 
-| 契约 | 冻结时间 | Owner |
-|---|---|---|
-| 前 9 份 | 2026-11-07 22:00 | 见 `contracts_owners` |
-| `delivery_artifact.schema.json` | 2026-11-08 12:00 | A |
+  契约   冻结时间   Owner  
+ --- --- --- 
+  前 9 份   2026-11-07 22:00   见 `contracts_owners`  
+  `delivery_artifact.schema.json`   2026-11-08 12:00   A  
 
 **冻结后要改，只有一条路**：
 
@@ -87,10 +87,10 @@ B 的 source_ref → C 的 scorecard / compile_error → D 的 workflow / trace
 
 **生成物**指每次运行都会被重写的文件，目前只有两份：
 
-| 文件 | 谁生成 | 去处 |
-| --- | --- | --- |
-| `docs/consistency-report.md` | `scripts/check_contracts.py` | 本地生成 + CI artifact |
-| `docs/CHANGELOG-contracts.md` | 人在合并后追加 | 只在 `main` 上追加，分支禁止修改 |
+  文件   谁生成   去处  
+  ---   ---   ---  
+  `docs/consistency-report.md`   `scripts/check_contracts.py`   本地生成 + CI artifact  
+  `docs/CHANGELOG-contracts.md`   人在合并后追加   只在 `main` 上追加，分支禁止修改  
 
 **为什么**：生成物不是"内容"，是"运行结果"。两个分支各自跑一次检查，报告必然不同；合并时就一定冲突。2026-11-04 夜里 6 个 PR 里有 5 个卡在这个文件上，就是代价。
 

@@ -34,7 +34,7 @@ directories:
   contracts:
     owner: A
     backup: C
-    note: 10 份契约的合并权归各自 Owner，见 contracts_owners
+    note: 11 份契约的合并权归各自 Owner，见 contracts_owners
   configs:
     owner: A
     backup: C
@@ -76,6 +76,7 @@ contracts_owners:
   llm_response.schema.json: A
   task_state.schema.json: A
   delivery_artifact.schema.json: A
+  draft.schema.json: C
 
 freeze:
   # 前 9 份统一冻结；第 10 份只 $ref 组装、依赖前 9 份，故单独延后

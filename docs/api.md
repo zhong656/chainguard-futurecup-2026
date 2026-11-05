@@ -12,7 +12,7 @@
 
 冻结后改字段：`contract-change` PR + ≥1 名非 Owner approve + 记 `docs/CHANGELOG-contracts.md`。
 
-## 1. 十份契约速查
+## 1. 十一份契约速查
 
 | # | 文件 | Owner | 一句话 | 谁依赖 |
 | --- | --- | --- | --- | --- |
@@ -25,7 +25,8 @@
 | 7 | `trace_event` | D | 一次留痕事件 | A 重放、前端 |
 | 8 | `llm_response` | A | 模型调用的统一响应 | 全体 |
 | 9 | `task_state` | A | 运行状态与续跑快照 | A 调度、D 续跑 |
-| 10 | `delivery_artifact` | A | 可核验交付包（只 `$ref` 组装） | 评审 |
+| 10 | `delivery_artifact` | A | 可核验交付包（只 `\` 组装） | 评审 |
+| 11 | `draft` | C | 方案书草稿（writer 产出 / verifier 读取） | C 的规则验证器、D 的编排 |
 
 ## 2. 关键字段口径（最容易写错的地方）
 
