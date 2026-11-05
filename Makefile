@@ -26,6 +26,7 @@ test:
 
 e2e:
 	$(PY) scripts/mock_e2e.py
+	$(PY) scripts/run_vertical.py
 
 report: contracts
 	@echo "报告已刷新：docs/consistency-report.md"

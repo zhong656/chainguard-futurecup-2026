@@ -122,8 +122,11 @@ def main() -> int:
     print(f"root: {ROOT}")
     print(f"artifact: {OUT / 'delivery_artifact.json'}")
 
-    # 证据链解析：语料清单存在时，每个 source_id 必须能找到。
+    # 非空证据链必须有可读取的语料清单，不能静默跳过校验。
     sources = ROOT / "knowledge" / "sources.yaml"
+    if artifact["evidence_chain"] and not sources.exists():
+        print(f"[FAIL] 证据链非空但语料清单不存在：{sources}", file=sys.stderr)
+        return 1
     if sources.exists():
         try:
             import yaml  # noqa: PLC0415

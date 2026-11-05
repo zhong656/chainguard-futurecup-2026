@@ -8,6 +8,7 @@
     2. 契  约：scripts/check_contracts.py（含 $ref、配置、归属、依赖）
     3. 测  试：pytest -q tests/
     4. 冒  烟：scripts/mock_e2e.py（产物须通过 delivery_artifact 契约）
+    5. 纵  切：scripts/run_vertical.py（真实连接检索、Mock 草稿、规则评分与定向回退）
 """
 from __future__ import annotations
 
@@ -52,6 +53,7 @@ def main() -> int:
         ("契约与一致性", lambda: run("契约与一致性", [PY, "scripts/check_contracts.py"])),
         ("单元测试", lambda: run("单元测试", [PY, "-m", "pytest", "-q", "tests"])),
         ("Mock 端到端", lambda: run("Mock 端到端", [PY, "scripts/mock_e2e.py"])),
+        ("离线纵切", lambda: run("离线纵切", [PY, "scripts/run_vertical.py"])),
     ]
     failed = []
     for title, fn in steps:
