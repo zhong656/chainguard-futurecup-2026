@@ -44,6 +44,10 @@ directories:
   workflows:
     owner: D
     backup: A
+  web:
+    owner: D
+    backup: A
+    note: D 的离线演示控制台与重放页；服务端生产路由由 A 接入
   knowledge:
     owner: B
     backup: C
