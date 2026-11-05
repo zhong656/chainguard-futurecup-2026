@@ -37,6 +37,17 @@ ChainGuard 不是"又一个聊天机器人"，而是一套 **Agent Harness（智
 > ⚠️ **当前仓库为阶段 0 骨架**：`docker-compose.yml` 与业务代码将在**阶段 4.3（11/17）**落地。
 > 下面是既定的目标流程，**现在执行还跑不起来**，请勿据此判断项目完成度。
 
+当前可运行的命令行纵切（使用离线占位语料，无需 API Key）：
+
+```bash
+python scripts/run_vertical.py --request "用机器视觉升级精密零件产线质检"
+```
+
+命令会运行检索、Mock 草稿、L1 规则评分和一次缺引用定向修订，并将
+`solution.md`、`evidence_chain.json`、`scorecard.json`、`trace.jsonl`
+及可校验的 `delivery_artifact.json` 写入 `outputs/_vertical/`。
+这些占位语料不构成正式方案的事实依据。
+
 目标形态（交付后预期）：
 
 ```bash
@@ -68,7 +79,7 @@ chainguard-futurecup-2026/
 ├── README.md
 ├── SECURITY.md                  # 凭据与数据安全约定
 ├── CONTRIBUTING.md              # 分支 / 提交 / PR / 复核规则
-├── requirements.txt             # 依赖清单（版本待锁定）
+├── requirements.txt             # 已锁版本的依赖清单
 ├── configs/                     # 平台级配置
 │   ├── llm.yaml                 # 模型档位与路由策略
 │   ├── scheduler.yaml           # 并发 / 预算 / 超时 / 重试

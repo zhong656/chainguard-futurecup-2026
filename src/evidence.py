@@ -13,7 +13,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import knowledge_hub as kh
+try:
+    from . import knowledge_hub as kh
+except ImportError:  # 兼容直接把 src/ 加入 sys.path 的现有调用方
+    import knowledge_hub as kh
 
 ROOT = Path(__file__).resolve().parents[1]
 MAX_TEXT = 2000  # 与 docs/api.md 的口径一致：只存被引用片段，不存全文
