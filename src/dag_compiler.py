@@ -198,3 +198,70 @@ def compile_workflow(source: str | Path | dict, *, agent_names: set[str] | None 
         {key: tuple(sorted(children)) for key, children in successors.items()},
         tuple(layers), workflow.get("loop"), tuple(workflow.get("outputs", [])),
     )
+
+
+def compile_langgraph(source, handlers: dict, *, active_nodes=None):
+    """编译一轮可执行 LangGraph；LoopController 决定下一轮的 active_nodes。
+
+    handlers[node_id](state) 返回该节点的结果；state['results'] 保存依赖结果。
+    gate handler 返回 {action: pass/revise/abort}，由 LoopController 生成。
+    回边不加入静态依赖，每轮重新编译受影响子图，避免并行汇合等候未重跑分支。
+    """
+    from operator import or_
+    from typing import Annotated, TypedDict
+    from langgraph.graph import END, START, StateGraph
+
+    class State(TypedDict):
+        request: str
+        run_id: str
+        trace_id: str
+        round: int
+        results: Annotated[dict, or_]
+
+    # 避免 postponed annotations 把局部 State 的 Annotated 解析到模块全局。
+    State.__annotations__["results"] = Annotated[dict, or_]
+    graph = source if isinstance(source, CompiledWorkflow) else compile_workflow(source)
+    active = set(graph.nodes) if active_nodes is None else set(active_nodes)
+    if not active or not active <= graph.nodes.keys():
+        raise WorkflowCompileError("BAD_DEPENDS_ON", "执行子图包含未知或空节点")
+    builder = StateGraph(State)
+
+    def invoke(node_id):
+        def wrapped(state):
+            missing = set(graph.dependencies[node_id]) - state.get("results", {}).keys()
+            if missing:
+                raise WorkflowCompileError("BAD_DEPENDS_ON", f"缺少前驱结果：{sorted(missing)}", node_id=node_id)
+            handler = handlers.get(node_id)
+            if handler is None and graph.nodes[node_id]["type"] in {"agent", "tool", "condition"}:
+                raise WorkflowCompileError("SCHEMA_INVALID", "缺少节点处理函数", node_id=node_id)
+            return {"results": {node_id: handler(state) if handler else {}}}
+        return wrapped
+
+    for node_id in graph.nodes:
+        if node_id in active:
+            builder.add_node(node_id, invoke(node_id))
+    for node_id in graph.nodes:
+        if node_id not in active:
+            continue
+        parents = [parent for parent in graph.dependencies[node_id] if parent in active]
+        if not parents:
+            builder.add_edge(START, node_id)
+        elif not any(graph.nodes[parent]["type"] == "condition" for parent in parents):
+            builder.add_edge(parents, node_id)
+        elif len(parents) != 1:
+            raise WorkflowCompileError("BAD_DEPENDS_ON", "条件后继不能混合其他依赖", node_id=node_id)
+        children = [child for child in graph.successors[node_id] if child in active]
+        if graph.nodes[node_id]["type"] == "condition":
+            def route(state, key=node_id, next_nodes=tuple(children)):
+                action = state["results"][key]["action"]
+                if action == "abort":
+                    return END
+                if action not in {"pass", "revise"}:
+                    raise ValueError("条件 handler 的 action 必须为 pass/revise/abort")
+                selected = [child for child in next_nodes if
+                            (graph.nodes[child]["type"] == "loop") == (action == "revise")]
+                return selected or END
+            builder.add_conditional_edges(node_id, route)
+        elif graph.nodes[node_id]["type"] == "loop" or not children:
+            builder.add_edge(node_id, END)
+    return builder.compile()
