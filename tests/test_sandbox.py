@@ -71,6 +71,7 @@ def test_dunder_escape_rejected():
 
 def test_output_truncated():
     result = sandbox.run("print('x' * 100000)", max_output_bytes=1024)
+    assert not result.ok
     assert result.truncated
     assert len(result.stdout) < 5000
 
@@ -78,11 +79,38 @@ def test_output_truncated():
 def test_env_not_leaked(monkeypatch):
     """宿主机环境变量不应出现在子进程里（隔离性）。"""
     monkeypatch.setenv("CHAIN_GUARD_SECRET", "top-secret")
-    result = sandbox.run("import json; print(json.dumps(dict(__import__('os').environ)))")
-    # __import__ 被禁，这条一定失败；再用白名单内的方式确认环境确实干净
-    assert not result.ok
-    from_env = sandbox.run("import os")
-    assert not from_env.ok
+    original_popen = sandbox.subprocess.Popen
+    passed_env = {}
+
+    def record_env(*args, **kwargs):
+        passed_env.update(kwargs["env"])
+        return original_popen(*args, **kwargs)
+
+    monkeypatch.setattr(sandbox.subprocess, "Popen", record_env)
+    assert sandbox.run("print('ok')").ok
+    assert set(passed_env) == {"PYTHONIOENCODING", "PYTHONHASHSEED"}
+    assert "CHAIN_GUARD_SECRET" not in passed_env
+
+
+def test_default_deny_imports_and_module_escape(tmp_path):
+    sentinel = tmp_path / "sentinel.txt"
+    sentinel.write_text("outside-cwd-readable", encoding="utf-8")
+    cases = (
+        f"import io; print(io.open({str(sentinel)!r}).read())",
+        "import zipfile",
+        "import random; print(random._os.getcwd())",
+        "from random import _os",
+        "from typing import sys",
+    )
+    for code in cases:
+        result = sandbox.run(code)
+        assert not result.ok and result.violations, code
+        assert "outside-cwd-readable" not in result.stdout
+
+
+def test_workdir_cannot_escape_temp_root(tmp_path):
+    with pytest.raises(ValueError, match="workdir"):
+        sandbox.run("print(1)", workdir=tmp_path)
 
 
 def test_syntax_error_reported():
