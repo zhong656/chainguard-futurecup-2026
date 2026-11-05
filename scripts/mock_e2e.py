@@ -122,7 +122,7 @@ def main() -> int:
     print(f"root: {ROOT}")
     print(f"artifact: {OUT / 'delivery_artifact.json'}")
 
-    # 证据链解析：每个 source_id 必须在语料清单里能找到（无清单时 Skip）
+    # 证据链解析：语料清单存在时，每个 source_id 必须能找到。
     sources = ROOT / "knowledge" / "sources.yaml"
     if sources.exists():
         try:
@@ -132,13 +132,14 @@ def main() -> int:
                 str(s.get("source_id"))
                 for s in (yaml.safe_load(sources.read_text(encoding="utf-8")) or {}).get("sources", [])
             }
-            unresolved = [s for s in artifact["evidence_chain"] if s not in declared]
-            if unresolved:
-                print(f"✘ 证据链无法解析：{unresolved}", file=sys.stderr)
-                return 1
-            print(f"✔ 证据链可解析：{len(artifact['evidence_chain'])} 条")
         except Exception as exc:  # noqa: BLE001
-            print(f"! 语料清单解析失败，跳过证据链检查：{exc}")
+            print(f"[FAIL] 语料清单解析失败：{exc}", file=sys.stderr)
+            return 1
+        unresolved = [s for s in artifact["evidence_chain"] if s not in declared]
+        if unresolved:
+            print(f"[FAIL] 证据链无法解析：{unresolved}", file=sys.stderr)
+            return 1
+        print(f"[OK] 证据链可解析：{len(artifact['evidence_chain'])} 条")
 
     if errors:
         for e in errors:
