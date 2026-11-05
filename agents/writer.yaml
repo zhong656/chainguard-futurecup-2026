@@ -16,6 +16,7 @@ display_name: 撰写员
 role: 按模板生成结构化方案书，强制引用回填
 tier: strong                     # 长文结构化生成，全程 strong
 tools: [template_render, knowledge_retrieve]
+read_only: false                 # 模板渲染会产出方案书文件，有副作用
 input_schema: WritingTask
 output_schema: Draft
 timeout_s: 180                   # 长文生成，重活档

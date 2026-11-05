@@ -18,6 +18,7 @@ display_name: 复审员
 role: 终审、收敛判定、生成交付摘要与失败归因
 tier: strong                     # 终审一口气看多轮评分卡 + trace，必须强档
 tools: [trace_read, knowledge_retrieve]   # 全部只读，不碰交付物
+read_only: true                  # 终审与归因只读，禁止任何写工具
 input_schema: ReviewRequest
 output_schema: FinalReport
 timeout_s: 90                    # 只读汇总，最短档

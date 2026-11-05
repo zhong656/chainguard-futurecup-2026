@@ -16,6 +16,7 @@ display_name: 分析师
 role: 数值测算、参数对比、生成图表
 tier: strong                     # 要读懂测算口径并解释假设，不能退到 small
 tools: [python_sandbox, chart_render, knowledge_retrieve]
+read_only: false                 # 沙箱执行 + 图表落盘，有副作用，必须显式声明
 input_schema: AnalysisRequest
 output_schema: Analysis
 timeout_s: 240                   # 最长档：沙箱执行 + 图表渲染

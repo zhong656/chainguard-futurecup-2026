@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://chainguard/contracts/agent_spec.schema.json",
   "title": "AgentSpec —— 角色定义",
-  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 5/10。agents/*.yaml 必须通过本 Schema 校验；tools 只能引用 src/tools/ 注册表中已存在的工具名。",
+  "description": "Owner: C（Agent 与验证）｜冻结时间: 2026-11-07 22:00｜契约编号 5/10。agents/*.yaml 必须通过本 Schema 校验；tools 只能引用 src/tools/registry.py 中已存在的工具名；read_only=true 的角色，其 tools 必须全部是注册表中 read_only=true 的工具。",
   "type": "object",
-  "required": ["name", "role", "tier", "tools", "output_schema"],
+  "required": ["name", "role", "tier", "tools", "output_schema", "read_only"],
   "properties": {
     "name": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
     "display_name": { "type": "string" },
@@ -14,6 +14,10 @@
       "type": "array",
       "items": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
       "uniqueItems": true
+    },
+    "read_only": {
+      "type": "boolean",
+      "description": "角色是否为只读：true 表示不得调用任何有副作用的工具（校验时须与 src/tools/registry.py 的 ToolSpec.read_only 比对）；false 表示允许。必填，禁止靠缺省值推断。"
     },
     "input_schema": { "type": "string" },
     "output_schema": { "type": "string" },

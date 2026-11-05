@@ -82,6 +82,7 @@
 | 每个角色的 `tools` 白名单 | 样例 2 个，其余未定 | **冻结 8 个工具名**，按最小权限分配：planner `[knowledge_retrieve]`；researcher `[knowledge_retrieve, doc_parse, web_fetch_optional]`；analyst `[python_sandbox, chart_render, knowledge_retrieve]`；writer `[template_render, knowledge_retrieve]`；verifier `[rule_verifier, knowledge_retrieve]`；reviewer `[trace_read, knowledge_retrieve]`（只读） |
 | `timeout_s` 统一还是分级 | 样例 120s | **分级**：planner/reviewer 90；verifier 120；writer/researcher 180；analyst 240（沙箱+渲染最慢）。重试：researcher 3 次，其余 2 次 |
 | `temperature` | 只有 writer 有值 | writer 0.3、verifier **0.0**（必须拉开，防同源偏差）、reviewer 0.1、planner 0.2、researcher 0.0、analyst 0.1 |
+| `read_only` 要不要有、怎么定 | 注册表已有工具侧 `read_only`，角色侧未定 | **要，且列为 `required` 的布尔值**：漏填默认为 false 会让校验静默失效，不允许靠缺省值推断。按注册表判定，`planner/researcher/verifier/reviewer = true`（4 个），`analyst/writer = false`（2 个）。`read_only=true` 的角色其 `tools` 必须 ⊆ 注册表里 5 个只读工具；跨文件校验由 A 加进 `check_contracts.py`，本轮先用 `tests/test_agent_readonly.py` 自检 |
 
 ### C-2 `scorecard` —— 评分卡（**Self-Loop 靠它回退**）
 
@@ -90,7 +91,7 @@
 | 维度到底几个、叫什么 | 样例给了 5 个：citation/consistency/coverage/logic/format | **就 5 维，不增不减**：增维要同时改 schema + verifier.yaml + 前端评分卡三处，冻结前不做 |
 | 权重分配 | 未定（`metrics` 只装分数，权重在 `configs/verifier.yaml`） | **0.30 / 0.20 / 0.20 / 0.20 / 0.10**（citation 最重，format 机器可判故最低），合计 1.00，已写进 `configs/verifier.yaml` |
 | `pass_threshold` | 样例 0.85 | **0.85**，另加**一票否决**：任一维 < 0.60 或存在 `severity=blocker` 的 issue → 直接 fail（防「引用分高但缺章节」被加权分掩盖） |
-| `issue.target_node` 如何保证存在 | 未校验（可加进 `check_contracts`） | 本轮对齐 `contracts/examples/workflow.good.json` 已冻结的 7 个节点 id：**plan / retrieve / fanout / write / gate / revise / snap**（原来写的 `analyze` 不存在，已改为 `fanout`——数值不一致由并行分支里的分析产出，回退到 fanout 重算）。`industry_solution.yaml` 必须沿用这 7 个 id；真正的存在性校验留给 A 加进 `check_contracts.py`（`scripts/` 归 A，C 不越界改） |
+| `issue.target_node` 如何保证存在 | 未校验（可加进 `check_contracts`） | 对齐 main 上 **11 节点**主工作流：`plan / retrieve / fanout / analyze / outline / write / verify / gate / revise / review / snap`（口径见 `docs/api.md`）。样例两个值：`write`（引用缺失）、`fanout`（数值不一致，与 `loop.to=fanout` 一致）。`target_node` 必须落在 `workflows/*.yaml` 的真实节点里；存在性校验由 A 加进 `check_contracts.py`（`scripts/` 归 A，C 不越界改）。**更正**：早先记的"7 个节点、没有 analyze"是旧拓扑，已过时 |
 
 ### C-3 `compile_error` —— 编译错误码
 

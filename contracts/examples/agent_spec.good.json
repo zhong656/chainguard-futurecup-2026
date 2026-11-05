@@ -4,6 +4,7 @@
   "role": "按模板生成结构化方案书，并强制把引用回填到每一段",
   "tier": "strong",
   "tools": ["template_render", "knowledge_retrieve"],
+  "read_only": false,
   "input_schema": "WritingTask",
   "output_schema": "Draft",
   "timeout_s": 120,

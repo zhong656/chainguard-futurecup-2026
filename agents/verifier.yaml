@@ -20,6 +20,7 @@ display_name: 验证员
 role: 独立打分、定位问题段落、生成修订指令
 tier: strong                     # 判分要能识破逻辑跳跃，不能降档
 tools: [rule_verifier, knowledge_retrieve]
+read_only: true                  # 只打分、只定位，绝不修改 Draft
 input_schema: VerificationRequest
 output_schema: ScoreCard
 timeout_s: 120                   # 只读长文 + 打分，标准档
