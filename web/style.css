@@ -1,0 +1,68 @@
+:root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#233247;background:#f1f4f8;font-size:14px}
+*{box-sizing:border-box}
+body{margin:0}
+header{background:#10243a;color:#fff;display:flex;justify-content:space-between;padding:23px 5%;align-items:center}
+.brand{font-size:25px;font-weight:700;letter-spacing:2px}
+.brand span{font-size:12px;color:#9dafc2;margin-left:16px;letter-spacing:3px}
+.badge{font-size:12px;border:1px solid #3a5269;border-radius:20px;padding:8px 15px;color:#bad9df}
+main{max-width:1450px;padding:36px 30px;margin:auto}
+.intro{display:flex;justify-content:space-between;align-items:center;margin-bottom:28px}
+.eyebrow{font-size:10px;letter-spacing:2px;color:#487f88;font-weight:bold}
+h1{font-size:30px;letter-spacing:1px;margin:12px 0}
+p{color:#637184;line-height:1.7}
+.notice{border-left:3px solid #c69b42;padding:10px 17px;max-width:290px;color:#805e21}
+.notice small{display:block;line-height:1.7;margin-top:6px}
+.panel{background:white;border:1px solid #dbe3ec;border-radius:12px;padding:24px;margin-bottom:22px;box-shadow:0 4px 15px #21384c04}
+.controls label{font-weight:600}
+.controls textarea{display:block;width:100%;margin:12px 0 15px;padding:14px;border:1px solid #cfd9e5;border-radius:7px;resize:vertical;min-height:73px;font:inherit;line-height:1.5}
+.actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+select{padding:11px;border:1px solid #cfdae4;border-radius:6px;font:inherit;background:#fff;max-width:100%}
+button,.file{cursor:pointer;background:#087d89;color:white;border:0;border-radius:6px;padding:12px 20px;font:inherit;font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.file{background:#edf3f7;color:#486276;font-size:12px}
+.file input{display:none}
+#message{font-size:12px;margin:13px 0 0}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.metrics>div{background:white;border:1px solid #dbe3ec;padding:20px 24px;border-radius:10px}
+.metrics small{color:#77889b;display:block;margin-bottom:10px}
+.metrics strong{font-size:23px;font-weight:650;color:#153c50}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+h2{font-size:16px;font-weight:650;margin:0 0 16px}
+.legend,.foot{font-size:11px;color:#7b8999}
+.graph{overflow:auto}
+svg{width:100%;min-width:850px;display:block}
+svg .edge{fill:none;stroke:#afbdcb;stroke-width:2}
+svg .loop-edge{stroke:#c79a41;stroke-dasharray:7 5}
+svg .node rect{fill:#f3f6fa;stroke:#d6dee8;stroke-width:1.5}
+svg .node text{fill:#53687d;font-size:15px;text-anchor:middle}
+svg .node .type{font-size:10px;fill:#8b99a8}
+svg .running rect{fill:#e0f4f4;stroke:#0d939c;stroke-width:2.5}
+svg .done rect{fill:#e8f5ef;stroke:#62a789}
+svg .failed rect{fill:#fcebea;stroke:#d57d76}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+.columns>.panel{min-width:0}
+.secondary{background:#edf5f5;color:#24737c;font-size:12px;padding:9px 13px}
+#seek{width:100%;accent-color:#087d89;margin:5px 0 15px}
+.timeline{height:310px;overflow:auto;font-size:12px}
+.event{padding:9px 0;border-bottom:1px solid #eef2f6;display:grid;grid-template-columns:65px 70px 1fr;gap:6px;align-items:baseline}
+.event small{color:#94a0ad}
+.event b{font-size:11px;color:#14828b}
+.event.fail b,.event.abort b{color:#b65b4e}
+.event.revise b{color:#ad8127}
+.event span{color:#4e6175;overflow-wrap:anywhere}
+.event i{display:block;color:#909baa;font-size:10px;font-style:normal}
+pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.85 "Microsoft YaHei",sans-serif;background:#f6f8fb;border-radius:6px;padding:16px;max-height:300px;overflow:auto}
+.downloads{display:flex;gap:7px;flex-wrap:wrap}
+.downloads a{font-size:10px;color:#087581;border:1px solid #c9dfe2;padding:7px;border-radius:5px;text-decoration:none}
+.empty{font-size:12px;color:#97a3b1}
+footer{text-align:center;color:#8c99aa;font-size:11px;padding:10px}
+@media(max-width:850px){main{padding:22px 15px}
+.intro{display:block}
+.notice{margin-top:20px}
+.metrics{grid-template-columns:repeat(2,1fr)}
+.columns{grid-template-columns:1fr}
+.legend{display:none}
+h1{font-size:24px}
+.badge{display:none}
+.brand span{margin-left:8px}
+}
