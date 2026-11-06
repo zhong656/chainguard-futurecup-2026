@@ -1,53 +1,23 @@
-# ============================================================
-# configs/scheduler.yaml —— 动态调度参数（占位）
-# ------------------------------------------------------------
-# 用途：控制并发、超时、重试、熔断、成本预算与断点续跑，
-#      是赛题考察点 4「动态调度」的主要可展示证据。
-# 落地时间：阶段 2（11/12 Scheduler 实现）。
-# 验收口径：故障注入（超时 / 限流 / 单节点失败）下不崩溃、可降级、可续跑。
-# ============================================================
+# 动态调度参数；Scheduler 不在代码中复制这些值。
+concurrency:
+  max_parallel_nodes: 1
+  queue_timeout_s: 0.05
 
-# concurrency：并发控制，防止把供应商打限流
-# concurrency:
-#   max_parallel_nodes: <待定>      # 同时执行的 DAG 节点数上限
-#   max_parallel_llm_calls: <待定>  # 同时进行的 LLM 调用数上限
-#   queue_timeout_s: <待定>
+retry:
+  max_attempts: 3
+  backoff: exponential
+  base_delay_s: 0.01
+  max_delay_s: 0.05
+  retry_on: [timeout, rate_limit, server_error]
 
-# retry：重试与退避（仅对可重试错误生效：超时 / 5xx / 限流）
-# retry:
-#   max_attempts: <待定>
-#   backoff: exponential
-#   base_delay_s: <待定>
-#   max_delay_s: <待定>
-#   retry_on: [timeout, rate_limit, server_error]
+timeout:
+  default_s: 0.2
+  per_node: {}
 
-# timeout：分级超时（不同节点类型耗时差异大）
-# timeout:
-#   default_s: <待定>
-#   per_node:
-#     researcher: <待定>
-#     analyst: <待定>
-#     writer: <待定>
+budget:
+  calls_max: 60
 
-# circuit_breaker：熔断，连续失败后跳过该档位并走 fallback
-# circuit_breaker:
-#   error_threshold: <待定>
-#   cooldown_s: <待定>
-
-# budget：预算护栏，超出即停止新增节点并产出部分结果
-# budget:
-#   max_usd_per_run: <待定>
-#   max_tokens_per_run: <待定>
-#   on_exceed: degrade        # degrade | abort
-
-# checkpoint：断点续跑（LangGraph checkpoint 落盘位置）
-# checkpoint:
-#   enabled: true
-#   backend: sqlite
-#   path: outputs/checkpoints/   # 不入库（.gitignore 已忽略 outputs/）
-
-# degradation：失败降级链（对应演示中的「故意触发故障」环节）
-# degradation:
-#   on_llm_failure: fallback_tier
-#   on_tool_failure: skip_and_flag
-#   on_verifier_failure: rule_only
+degradation:
+  on_llm_failure: skip_and_flag
+  on_tool_failure: skip_and_flag
+  on_verifier_failure: abort
