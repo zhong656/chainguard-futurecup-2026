@@ -15,9 +15,14 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--request", default="用机器视觉升级精密零件产线质检")
     parser.add_argument("--output", type=Path, default=ROOT / "outputs" / "_vertical")
+    parser.add_argument("--inject-fault", choices=["timeout"], help="离线验收用故障注入")
+    parser.add_argument("--node", default="retrieve", help="故障注入目标节点")
     args = parser.parse_args(argv)
     try:
-        result = run_vertical_slice(args.request, output=args.output)
+        result = run_vertical_slice(
+            args.request, output=args.output,
+            inject_fault=args.inject_fault, fault_node=args.node,
+        )
     except Exception as exc:
         print(f"[FAIL] 纵切未完成：{exc}", file=sys.stderr)
         return 1

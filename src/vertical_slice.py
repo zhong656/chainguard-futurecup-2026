@@ -5,10 +5,10 @@ from __future__ import annotations
 import hashlib
 import json
 import subprocess
+import time
 from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
-from time import perf_counter
 from uuid import uuid4
 
 import yaml
@@ -19,7 +19,7 @@ from src.evidence import EvidencePool
 from src.knowledge_hub import DEFAULT_CORPUS, DEFAULT_SOURCES, build_index, load_sources, retrieve
 from src.llm_adapter import MockLLMAdapter, parse_draft
 from src.loop_controller import LoopController
-from src.rule_checker import check
+from src.scheduler import Scheduler
 from src.verifier import default_verifier
 from src.trace import digest, event, write_trace
 
@@ -51,21 +51,22 @@ def _commit_sha() -> str:
 
 
 def _render_charts(result: dict, directory: Path) -> list[Path]:
-    """评分卡五维 + Self-Loop 收敛曲线。图表也进 manifest，否则"可核验"只覆盖文本。"""
+    """将评分卡和收敛轮次渲染成可复核的离线 SVG。"""
     from src.tools import chart
 
     charts = directory / "charts"
     charts.mkdir(parents=True, exist_ok=True)
     metrics = result["scorecard"]["metrics"]
-    out = [chart.bar_chart(list(metrics), [float(v) for v in metrics.values()],
-                         charts / "scorecard.svg", title="评分卡五维")]
+    out = [chart.bar_chart(
+        list(metrics), [float(value) for value in metrics.values()],
+        charts / "scorecard.svg", title="评分卡五维",
+    )]
     rounds = result.get("rounds") or []
     if rounds:
         out.append(chart.line_chart(
-            [f"R{r['round']}" for r in rounds],
-            [float(r["score"]) for r in rounds],
-            charts / "convergence.svg",
-            title="Self-Loop 收敛",
+            [f"R{item['round']}" for item in rounds],
+            [float(item["score"]) for item in rounds],
+            charts / "convergence.svg", title="Self-Loop 收敛",
             threshold=float(result["scorecard"]["threshold"]),
         ))
     return out
@@ -106,7 +107,10 @@ def export_delivery(result: dict, directory: Path) -> dict:
         files.append({"path": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
     for path in chart_paths:
         payload = path.read_bytes()
-        files.append({"path": f"charts/{path.name}", "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
+        files.append({
+            "path": f"charts/{path.name}", "sha256": hashlib.sha256(payload).hexdigest(),
+            "bytes": len(payload),
+        })
     commit_sha = _commit_sha()
     artifact = {
         "solution": {"path": "solution.md", "sha256": files[0]["sha256"],
@@ -128,9 +132,13 @@ def export_delivery(result: dict, directory: Path) -> dict:
 def run_vertical_slice(
     request: str, *, output: Path | None = None, sources_path: Path = DEFAULT_SOURCES,
     corpus_dir: Path = DEFAULT_CORPUS, inject_initial_gap: bool = True,
-    run_id: str | None = None,
+    run_id: str | None = None, inject_fault: str | None = None,
+    fault_node: str | None = None,
 ) -> dict:
-    """按已编译 DAG 执行 Mock 纵切；首轮可注入一次缺引用以验证回退。"""
+    """按已编译 DAG 执行 Mock 纵切；首轮可注入一次缺引用以验证回退。
+
+    ``inject_fault`` 只用于离线验收，故障仍通过 Scheduler 的统一事件出口。
+    """
     if not isinstance(request, str) or not request.strip():
         raise ValueError("需求不能为空")
     if not sources_path.exists():
@@ -144,8 +152,17 @@ def run_vertical_slice(
         raise VerticalSliceError("语料清单没有可检索片段")
     graph = compile_workflow(ROOT / "workflows" / "industry_solution.yaml")
     policy = yaml.safe_load((ROOT / "configs" / "verifier.yaml").read_text(encoding="utf-8"))["scorecard"]
+    scheduler_policy = yaml.safe_load((ROOT / "configs" / "scheduler.yaml").read_text(encoding="utf-8"))
+    if inject_fault is not None and inject_fault != "timeout":
+        raise ValueError("inject_fault 只支持 timeout")
+    if inject_fault and fault_node not in graph.nodes:
+        raise ValueError(f"故障节点不存在：{fault_node}")
+    if inject_fault:
+        # 验收故障不能等待默认 30 秒；只缩短被注入节点的调度超时。
+        scheduler_policy["timeout"].setdefault("per_node", {})[fault_node] = 0.05
     adapter = MockLLMAdapter()
     controller = LoopController(graph, policy)
+    scheduler = Scheduler(graph, scheduler_policy)
     run_id = run_id or "mock-" + uuid4().hex[:12]
     trace_id = run_id + "-trace"
     config_version = digest({"workflow": graph.nodes, "loop": graph.loop, "policy": policy})
@@ -154,9 +171,12 @@ def run_vertical_slice(
     rounds: list[dict] = []   # 每轮评分卡：fail→pass 的物证，最终写进 rounds.json
     active = set(graph.nodes)
     round_number = 0
+    budget_used = 0
     pool = EvidencePool(chunks)
 
     def execute(node_id: str):
+        if inject_fault == "timeout" and node_id == fault_node:
+            time.sleep(0.2)
         if node_id == "plan":
             return {"request_digest": digest(request)}
         if node_id == "retrieve":
@@ -191,32 +211,36 @@ def run_vertical_slice(
             return {"checkpoint_enabled": False}
         raise VerticalSliceError(f"未实现工作流节点：{node_id}")
 
+    def should_run(node_id: str, state: dict) -> bool:
+        action = state.get("gate", {}).get("action")
+        if node_id == "revise":
+            return action == "revise"
+        if node_id in {"review", "snap"}:
+            return action == "pass"
+        return True
+
     while True:
-        for layer in graph.layers:
-            for node_id in layer:
-                if node_id not in active:
-                    continue
-                if "gate" in results:
-                    action = results["gate"]["action"]
-                    if node_id == "revise" and action != "revise":
-                        continue
-                    if node_id in {"review", "snap"} and action != "pass":
-                        continue
-                started = perf_counter()
-                events.append(event(trace_id, run_id, node_id, "start", round=round_number,
-                                    input_value={"node": node_id, "round": round_number},
-                                    config_version=config_version))
-                try:
-                    value = execute(node_id)
-                except Exception as exc:
-                    events.append(event(trace_id, run_id, node_id, "fail", round=round_number,
-                                        error_class=type(exc).__name__, reason="节点执行失败",
-                                        config_version=config_version))
-                    raise
-                results[node_id] = value
-                events.append(event(trace_id, run_id, node_id, "end", round=round_number,
-                                    output_value=value, duration_ms=int((perf_counter() - started) * 1000),
-                                    config_version=config_version))
+        try:
+            scheduler_result = scheduler.run(
+                execute,
+                run_id=run_id,
+                emit=events.append,
+                active_nodes=active,
+                completed_nodes=set(results),
+                context=results,
+                should_run=should_run,
+                event_fields={"round": round_number, "config_version": config_version},
+                budget_used=budget_used,
+            )
+            budget_used = scheduler_result["budget"]["calls_used"]
+        except Exception:
+            if output is not None:
+                write_trace(Path(output) / "trace.jsonl", events)
+            raise
+        if "verify" not in results:
+            if output is not None:
+                write_trace(Path(output) / "trace.jsonl", events)
+            raise VerticalSliceError("调度降级后没有评分结果，已保留 trace.jsonl")
         card = results["verify"]
         rounds.append({
             "round": round_number,
