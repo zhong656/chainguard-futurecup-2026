@@ -4,6 +4,9 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from contextlib import contextmanager
+from contextvars import ContextVar
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -13,6 +16,17 @@ from jsonschema import Draft202012Validator
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = json.loads((ROOT / "contracts/trace_event.schema.json").read_text(encoding="utf-8"))
 VALIDATOR = Draft202012Validator(SCHEMA)
+_observer = ContextVar("trace_observer", default=None)
+
+
+@contextmanager
+def observe_events(callback):
+    """本上下文只读订阅；原始输出仅交给显式订阅者，不写入 Trace。"""
+    token = _observer.set(callback)
+    try:
+        yield
+    finally:
+        _observer.reset(token)
 
 
 def _validate(data):
@@ -41,6 +55,8 @@ def event(trace_id, run_id, node_id, kind, *, round=0, input_value=None, output_
     if output_value is not None:
         data["output_digest"] = digest(output_value)
     _validate(data)
+    if _observer.get() is not None:
+        _observer.get()(deepcopy(data), deepcopy(output_value))
     return data
 
 
@@ -73,11 +89,13 @@ def read_trace(path: str | Path) -> list[dict]:
 
 
 def replay(events: list[dict]) -> list[dict]:
-    """按文件顺序生成审计帧；不执行工具，也不把 Trace 当 checkpoint 续跑。"""
+    """按时间戳稳定排序生成审计帧；不执行工具或 checkpoint 续跑。"""
     states, frames = {}, []
-    kinds = {"start": "running", "end": "done", "fail": "failed", "abort": "failed"}
+    kinds = {"start": "running", "end": "done", "fail": "failed", "abort": "failed",
+             "retry": "retrying", "degrade": "degraded", "revise": "revising"}
     for item in events:
         _validate(item)
+    for item in sorted(events, key=lambda e: datetime.fromisoformat(e["ts"].upper().replace("Z", "+00:00"))):
         if item["kind"] in kinds:
             states[item["node_id"]] = kinds[item["kind"]]
         frames.append({"event": dict(item), "nodes": dict(states)})

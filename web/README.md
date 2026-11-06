@@ -1,50 +1,58 @@
-# D 组离线演示与交接
+# D 组控制台与 Trace 重放（Issue #43）
 
-本目录是 11/07 纵切的本机验收入口。评分与角色调用明确标为 Mock 桩；检索消费 B 的既有接口，不要求 A/C 模块先完成。生产 FastAPI/Scheduler 与 C 的四类规则验证器由相应 Owner 接入。
+D（2055034503-ai）负责工作流编排、Loop、Trace 和控制台。当前页面默认调用
+`web.local_runtime → src.vertical_slice.run_vertical_slice`，消费既有 Mock LLM、B 的
+实际离线检索 / EvidencePool、C 的实际 L1 检查和 D 的 LoopController。
+首轮有意缺一处引用，真实检查产生 fail，定向修订后 pass；不代表正式产业方案。
 
-## 命令行
-
-```powershell
-python -m web.mock_runtime --output outputs/d-demo
-python -m web.mock_runtime --scenario numeric_conflict --output outputs/d-numeric
-```
-
-默认轻量引擎只依赖现有检查依赖；真实 LangGraph 在隔离环境安装后运行：
-
-```powershell
-python -m venv --system-site-packages .venv
-.venv\Scripts\python.exe -m pip install langgraph
-.venv\Scripts\python.exe -m web.mock_runtime --engine langgraph
-```
-
-退出码 0 表示 Mock 通过；证据不足、超时或不收敛为非零，不假装成功。每次导出 `solution.md`、`evidence_chain.json`、`scorecard.json`、`trace.jsonl`，附通过既有契约校验的 `delivery_artifact.json` 与真实 commit SHA、文件 hash/字节数。所有产物在已忽略的 outputs/，不得提交。
-
-## 控制台与重放
-
-```powershell
-python -m web.demo_server
-# 浏览器访问 http://127.0.0.1:8765
-```
-
-选择场景并运行，实际事件通过 SSE 进入工作流图。可下载交付物、拖动 Trace 进度或导入 JSONL 只读重放。真实 LangGraph 选项需用上面的 `.venv` Python 启动服务；轻量引擎不依赖 LangGraph。
-
-此页面是无前端安装步骤的阶段 0 演示原型；后续正式 Vue/Vite/X6 控制台、生产 API 及正式视频录制仍按交付计划推进。
-
-## 接入约定
-
-- `compile_langgraph(graph, handlers, active_nodes=...)` 编译一轮。handler 接收含 `results` 的状态，返回该节点结果。条件 handler 只消费 LoopController 的 pass/revise/abort 决定；普通依赖不含回边。
-- `LoopController.decide(scorecard)` 读取既有评分卡和 verifier 配置，不调用模型。多问题合并下游重算；未受影响分支结果保留，默认落点为 fanout。
-- 初稿 round=0，最多追加 3 轮；连续 2 轮分数未超过历史最佳值终止。一票否决不能被高总分覆盖。
-- `src/trace.py` 提供结构校验、输入/输出哈希与审计重放；A 的生产日志策略与 checkpoint 接入需其会签。Trace 不保存需求/提示词原文，不作为续跑状态。
-- 正式演示视频按 11/19 计划基于集成版本录制；建议依次展示正常修订、数值定向回退、无提升护栏、四件交付物及 Trace 重放。
-
-## 验收
+## 启动与验收
 
 ```powershell
 $env:PYTHONUTF8 = '1'
-$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1' # 仅本机已有 pytest 插件冲突时需要
+# 仅本机已有 pytest 插件冲突时需要：
+$env:PYTEST_DISABLE_PLUGIN_AUTOLOAD = '1'
+python -m src.run --output outputs/demo
+python -m pytest tests/test_console.py -q
 python scripts/check.py
-.venv\Scripts\python.exe -m pytest -q tests/test_langgraph.py tests/test_loop.py tests/test_trace.py tests/test_d_mock.py
+python -m web.demo_server
+# 浏览器打开 http://127.0.0.1:8765
 ```
 
-CI 的最小依赖环境运行所有非 LangGraph 测试；可选 LangGraph 测试在未安装时明确 skip，不能把 skip 说成已验证。D 的开发环境必须实际安装并运行该组测试。
+最小检查环境无需安装 requirements.txt 或前端依赖。全套 LangGraph 验收另用已有
+`.venv\Scripts\python.exe -m pytest -q`，缺 LangGraph 时的 skip 不能报作通过。
+
+## 页面操作
+
+- **运行工作流**：本机 `/api/run-real` 只适配既有纵切；SSE 中的 trace 与最终
+  `outputs/d-console/<download_id>/trace.jsonl` 逐条一致，不合成节点事件。
+- **评分历史**：独立的 `review_history.json` 保存实际 verify 输出和对应草稿，
+  以 `event_id` 关联 Trace。拖动进度可查看首轮 blocker 与缺引用段落，再看修订结果。
+  此侧文件含演示草稿正文，仅在本机 outputs/；分享前应自行检查，不属于正式四件交付物。
+- **载入 CLI Trace**：读 `outputs/demo/trace.jsonl`；也可以导入任意本地 JSONL。
+  按带时区时间戳稳定排序，同一时间保持文件顺序。拒绝重复事件、混合运行或非法时间。
+  只有 Trace 时不推断评分或草稿，重放不调用工具、不支持 checkpoint 续跑。
+- **状态颜色**：start=青、end=绿、fail/abort=红、retry/degrade=橙、revise=紫；
+  checkpoint 仅列入时间线。verify 的 end 表示检查执行完成，质量 fail 单独显示。
+- **交付下载**：四件交付物 + delivery_artifact.json（实际 Git SHA、SHA256、字节数）；
+  review_history.json 为额外的本机调试侧文件。outputs/ 全部不入 Git。
+
+## A API 接口预留（待 #40 合入后实测）
+
+选择「A 的 API」，填写服务地址。页面严格按 Issue #40 调用：
+
+1. `POST /runs`，body 仅 `{"request":"..."}`，读取 run_id。
+2. `GET /runs/{run_id}/events`，接收 SSE 中原样的 trace_event（支持默认 message）。
+3. 事件流结束后 `GET /runs/{run_id}/artifacts`，展示返回的交付包或文件列表。
+
+跨端口访问需 A 的服务允许控制台来源的 CORS，或反向代理为同源。
+当前只完成客户端与接口测试响应的核对；A 的实际 API 尚未落地，不能宣称完成联调。
+未收到历史评分侧文件时仅显示实际返回的最终评分。
+
+旧 `/api/run` 和 `python -m web.mock_runtime` 保留为明确的角色/评分桩回归测试；
+页面默认不使用它们。L2 独立评审、L3 双路比对仍待各自实现，不宣称三层验证完成。
+
+## 演示
+
+见 `docs/D-DEMO.md` 的 6 分 22 秒连续演示脚本，保留 fail→pass。
+本机字幕录屏及其运行清单位于 `outputs/d-demo-video/`，不是生产 API 验收视频。
+Issue #43 在 API 实测前保持 open；接口对接截止 2026-11-17，最终录制截止 2026-11-18。

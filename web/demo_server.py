@@ -1,4 +1,4 @@
-"""D 的本机 Mock 演示服务：python -m web.demo_server，默认仅监听 127.0.0.1:8765。
+"""D 的本机纵切控制台：python -m web.demo_server，默认仅监听 127.0.0.1:8765。
 
 生产 API/FastAPI 由 A 接入；此服务用于无 Key 的可视化验收与 SSE 演示。
 """
@@ -14,10 +14,12 @@ from urllib.parse import parse_qs, urlparse
 from uuid import uuid4
 
 from src.dag_compiler import ROOT, compile_workflow
+from src.trace import read_trace
+from web.local_runtime import run_local
 from web.mock_runtime import run_demo
 
 WEB = Path(__file__).parent
-FILES = {"solution.md", "scorecard.json", "evidence_chain.json", "trace.jsonl", "delivery_artifact.json"}
+FILES = {"solution.md", "scorecard.json", "evidence_chain.json", "trace.jsonl", "delivery_artifact.json", "review_history.json"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -29,6 +31,11 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path == "/api/workflow":
             graph = compile_workflow(ROOT / "workflows/industry_solution.yaml")
             return self.send_data(json.dumps({"nodes": list(graph.nodes.values()), "loop": graph.loop}).encode(), "application/json")
+        if parsed.path == "/api/replay/demo":
+            target = ROOT / "outputs/demo/trace.jsonl"
+            if not target.is_file():
+                return self.send_error(404, "Run python -m src.run --output outputs/demo first")
+            return self.send_data(json.dumps(read_trace(target)).encode(), "application/json")
         if parsed.path == "/download":
             args = parse_qs(parsed.query)
             run, name = args.get("run", [""])[0], args.get("file", [""])[0]
@@ -38,10 +45,10 @@ class Handler(BaseHTTPRequestHandler):
             if not target.is_file():
                 return self.send_error(404)
             return self.send_data(target.read_bytes(), "application/octet-stream", name)
-        name = {"/": "index.html", "/app.js": "app.js", "/style.css": "style.css"}.get(parsed.path)
+        name = {"/": "index.html", "/app.js": "app.js", "/trace_view.js": "trace_view.js", "/style.css": "style.css"}.get(parsed.path)
         if name is None:
             return self.send_error(404)
-        mime = {"index.html": "text/html", "app.js": "text/javascript", "style.css": "text/css"}[name]
+        mime = {"index.html": "text/html", "app.js": "text/javascript", "trace_view.js": "text/javascript", "style.css": "text/css"}[name]
         self.send_data((WEB / name).read_bytes(), mime)
 
     def send_data(self, data, mime, filename=None):
@@ -55,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
-        if self.path != "/api/run" or self.headers.get_content_type() != "application/json":
+        if self.path not in {"/api/run", "/api/run-real"} or self.headers.get_content_type() != "application/json":
             return self.send_error(400)
         origin = self.headers.get("Origin")
         if origin and urlparse(origin).netloc != self.headers.get("Host"):
@@ -65,8 +72,11 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= 20000:
                 raise ValueError("无效请求长度")
             data = json.loads(self.rfile.read(length))
-            if not isinstance(data, dict) or set(data) - {"request", "scenario", "engine"}:
+            allowed = {"request"} if self.path == "/api/run-real" else {"request", "scenario", "engine"}
+            if not isinstance(data, dict) or set(data) - allowed:
                 raise ValueError("无效请求字段")
+            if not isinstance(data.get("request"), str) or not 0 < len(data["request"].strip()) <= 4000:
+                raise ValueError("需求不能为空且最多 4000 字")
         except (ValueError, TypeError):
             return self.send_error(400)
         self.send_response(200)
@@ -81,12 +91,16 @@ class Handler(BaseHTTPRequestHandler):
                 with lock:
                     self.wfile.write(payload)
                     self.wfile.flush()
-            except (BrokenPipeError, ConnectionResetError):
+            except OSError:  # 浏览器断开不应打断纵切或交付物落盘。
                 pass
         folder = uuid4().hex
         try:
-            result = run_demo(**data, output=ROOT / "outputs/d-console" / folder,
-                              emit=lambda item: send("trace", item))
+            options = {"output": ROOT / "outputs/d-console" / folder,
+                       "emit": lambda item: send("trace", item)}
+            if self.path == "/api/run-real":
+                result = run_local(**data, **options, publish=lambda item: send("review", item))
+            else:
+                result = run_demo(**data, **options)  # 兼容明确选择的旧评分桩测试。
             result["download_id"] = folder
             send("result", result)
         except Exception as exc:
@@ -97,5 +111,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
-    print(f"ChainGuard D Mock 控制台：http://127.0.0.1:{args.port}")
+    print(f"ChainGuard D 本机纵切控制台：http://127.0.0.1:{args.port}")
     ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
