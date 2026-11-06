@@ -40,7 +40,7 @@ ChainGuard 不是"又一个聊天机器人"，而是一套 **Agent Harness（智
 当前可运行的命令行纵切（使用离线占位语料，无需 API Key）：
 
 ```bash
-python scripts/run_vertical.py --request "用机器视觉升级精密零件产线质检"
+python -m src.run --request "用机器视觉升级精密零件产线质检"
 ```
 
 命令会运行检索、Mock 草稿、L1 规则评分和一次缺引用定向修订，并将
