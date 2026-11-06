@@ -65,7 +65,7 @@ def test_unknown_source_id_raises(pool):
 
 def test_resolve_chain_rejects_missing(pool):
     with pytest.raises(evidence.EvidenceError):
-        pool.resolve_chain(["mv:doc001", "mv:missing"])
+        pool.resolve_chain(["kb:a1_gb_t_40659_2021_info", "mv:missing"])
 
 
 def test_chain_compatible_with_delivery_artifact(chunks):
@@ -85,9 +85,9 @@ def test_chain_compatible_with_delivery_artifact(chunks):
 
 def test_refs_for_returns_all_chunks_of_doc(chunks):
     pool = evidence.EvidencePool(chunks)
-    refs = pool.refs_for("mv:doc001")
+    refs = pool.refs_for("kb:a1_gb_t_40659_2021_info")
     assert len(refs) >= 1
-    assert {r["source_id"] for r in refs} == {"mv:doc001"}
+    assert {r["source_id"] for r in refs} == {"kb:a1_gb_t_40659_2021_info"}
     # 每段的字符区间必须落在该文件范围内且互不相同
     spans = [tuple(r["char_range"]) for r in refs]
     assert len(spans) == len(set(spans)), "同一文档的不同片段不应共用 char_range"

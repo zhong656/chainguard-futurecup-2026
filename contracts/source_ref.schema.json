@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://chainguard/contracts/source_ref.schema.json",
   "title": "SourceRef —— 证据引用单元",
-  "description": "Owner: B（知识库与工具）｜冻结时间: 2026-11-07 22:00｜契约编号 1/10。source_id 由语料入库过程生成，Agent 与模型一律不得自造。命名空间白名单（2026-11-05 B 定）：mv=产业/技术文档，web=网页摘录，csv=结构化参数表；新增命名空间须走 contract-change。text 为被引用片段，建议 ≤2000 字符（超长由切片解决，不在本契约强制）。",
+  "description": "Owner: B（知识库与工具）｜冻结时间: 2026-11-07 22:00｜契约编号 1/10。source_id 由语料入库过程生成，Agent 与模型一律不得自造。命名空间白名单（2026-11-05 B 定）：mv=产业/技术文档，web=网页摘录，csv=结构化参数表，kb=知识库转述卡（2026-11-07 新增）；新增命名空间须走 contract-change。text 为被引用片段，建议 ≤2000 字符（超长由切片解决，不在本契约强制）。",
   "$defs": {
     "source_id": {
       "type": "string",

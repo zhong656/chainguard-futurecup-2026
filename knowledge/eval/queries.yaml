@@ -1,102 +1,90 @@
-# 检索评测集（Owner: B）
+# 检索评测集（Owner: B）· 真实语料版（2026-11-07）
 #
-# 用途：给「知识库定义与集成」这个考察点提供**可复现的命中率证据**。
 # 口径：
-#   - 每条查询标注期望命中的 source_id（由人工确定，不由程序反推）
-#   - hit@k：期望的 source_id 出现在返回的 top_k 里即算命中
-#   - MRR  ：命中项的排名倒数，衡量"排得靠不靠前"
+#   - expected 由人工依据语料内容确定，不由程序反推
+#   - hit@k：期望的 source_id 出现在返回的 top_k 里；MRR 衡量排得靠不靠前
+#   - id 以 h 开头的是**改述查询**（不直接复用原文用词），用于测泛化；
+#     若这一组也是 100%，说明查询与语料耦合过紧，评测失去意义
 #
-# 注意：当前语料是 5 篇**占位稿**，本评测证明的是「链路能查准」，
-# 不代表真实语料下的检索质量。换成真实资料后必须重跑并重标期望值。
+# 语料为 17 份**原创转述卡**（见 knowledge/ATTRIBUTION.md），
+# 内容含事实与法条，不含第三方作品原文。
 
-version: 1
+version: 2
 top_k: 8
 
 queries:
-  # ---- mv:doc001 机器视觉质检现状 ----
+  # ---- 标准与检测技术 ----
   - id: q01
-    query: 漏检率 定义
-    expected: [mv:doc001]
+    query: 机器视觉在线检测系统 通用要求 国家标准
+    expected: [kb:a1_gb_t_40659_2021_info]
   - id: q02
-    query: 光源不稳定 亮度漂移
-    expected: [mv:doc001]
+    query: 成像系统 五个部分 需求定义 选型
+    expected: [kb:a2_basler_vision_fundamentals]
   - id: q03
-    query: 工件表面反光 高光 缺陷
-    expected: [mv:doc001]
+    query: 工业相机选型 要看到什么
+    expected: [kb:a3_basler_camera_selection]
   - id: q04
-    query: 过杀率 良品判缺陷
-    expected: [mv:doc001]
-
-  # ---- mv:doc002 改造成本区间 ----
+    query: 表面缺陷检测 方法谱系 2D 3D
+    expected: [kb:a5_sensors_2020_5136]
   - id: q05
-    query: 单工位改造成本 投入区间
-    expected: [mv:doc002]
+    query: 缺陷样本少 类别分布不均 实时性
+    expected: [kb:a6_applsci_2021_7657]
   - id: q06
-    query: 相机与镜头 占比
-    expected: [mv:doc002]
+    query: 在线检测系统 测试方法 标准
+    expected: [kb:e1_gb_t_42980_2023_info]
+
+  # ---- 制造业与宏观数据 ----
   - id: q07
-    query: 算法与调试 成本占比
-    expected: [mv:doc002]
+    query: 十四五 智能制造 不良品率 研制周期
+    expected: [kb:b1_miit_14th_five_year_smart_manufacturing]
   - id: q08
-    query: 回收周期 复检人力
-    expected: [mv:doc002]
-
-  # ---- web:doc007 边缘部署形态 ----
+    query: 制造业技术改造投入 宏观背景
+    expected: [kb:b5_2025_statistical_bulletin]
   - id: q09
-    query: 边缘盒子 时延
-    expected: [web:doc007]
+    query: 统计年鉴 宏观参数 取数来源
+    expected: [kb:b3_stats_yearbook_index]
   - id: q10
-    query: 云端推理 依赖带宽
-    expected: [web:doc007]
+    query: 转载 引用 显著位置 署名 统计
+    expected: [kb:b4_stats_citation_notice]
+
+  # ---- 部署与运维 ----
   - id: q11
-    query: 产线不允许停机 模型更新
-    expected: [web:doc007]
+    query: 离散制造业 边缘计算 白皮书 实时响应
+    expected: [kb:c1_caict_edge_computing_whitepaper]
   - id: q12
-    query: 断网 离线运行
-    expected: [web:doc007]
-
-  # ---- csv:param001 ROI 测算假设 ----
+    query: 云边协同 上行带宽 断网续跑
+    expected: [kb:c3_kubeedge_docs]
   - id: q13
-    query: ROI 测算 年化收益
-    expected: [csv:param001]
+    query: 边缘推理 模型优化 硬件适配
+    expected: [kb:c5_openvino_docs]
+
+  # ---- 合规与数据 ----
   - id: q14
-    query: 折旧年限 一次性投入
-    expected: [csv:param001]
+    query: 工业数据 分类分级 采集边界
+    expected: [kb:d1_industrial_data_classification_guide]
   - id: q15
-    query: 复检人数 人均年成本
-    expected: [csv:param001]
+    query: 数据安全法 分类分级保护制度
+    expected: [kb:d2_data_security_law]
   - id: q16
-    query: 只有结论没有假设 判定
-    expected: [csv:param001]
-
-  # ---- mv:doc003 合规要求 ----
+    query: 最小必要 人脸 个人信息
+    expected: [kb:d4_personal_information_protection_law]
   - id: q17
-    query: 图像含人脸 个人信息
-    expected: [mv:doc003]
-  - id: q18
-    query: 数据出境 第三方算法服务
-    expected: [mv:doc003]
-  - id: q19
-    query: 留存期限 策略
-    expected: [mv:doc003]
-  - id: q20
-    query: 企业名 虚构 演示数据
-    expected: [mv:doc003]
+    query: 国家标准公开 免费 范围边界
+    expected: [kb:e2_national_standard_open_guide]
 
-  # ---- 改述查询（不直接复用原文用词，考验泛化能力）----
-  # 这一组预期会低于上一组；如果它也是 100%，说明查询和语料耦合太紧、评测失去意义。
+  # ---- 改述查询（不直接复用原文用词）----
   - id: h01
-    query: 拍照检查产品有没有瑕疵
-    expected: [mv:doc001]
+    query: 相机怎么挑 先想清楚什么
+    expected: [kb:a3_basler_camera_selection]
   - id: h02
-    query: 一条产线改造要花多少钱
-    expected: [mv:doc002]
+    query: 拍到的图片里有人的脸怎么办
+    expected: [kb:d4_personal_information_protection_law]
   - id: h03
-    query: 车间里放一台机器自己算行不行
-    expected: [web:doc007]
+    query: 产线不联网还能不能跑
+    expected: [kb:c3_kubeedge_docs]
   - id: h04
-    query: 这笔投入几年能赚回来
-    expected: [csv:param001]
+    query: 国家有没有在推智能制造
+    expected: [kb:b1_miit_14th_five_year_smart_manufacturing]
   - id: h05
-    query: 拍到人的脸要怎么办
-    expected: [mv:doc003]
+    query: 零件表面有瑕疵怎么自动查出来
+    expected: [kb:a5_sensors_2020_5136, kb:a6_applsci_2021_7657]
