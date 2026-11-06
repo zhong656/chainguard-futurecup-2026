@@ -31,7 +31,11 @@ def policy(**overrides):
 
 def test_timeout_is_recorded_and_run_does_not_hang():
     events = []
-    scheduler = Scheduler(graph("slow", "after"), policy(timeout={"default_s": 0.01}))
+    scheduler = Scheduler(
+        graph("slow", "after"),
+        policy(timeout={"default_s": 0.01},
+               concurrency={"max_parallel_nodes": 1, "queue_timeout_s": 0.01}),
+    )
 
     def execute(node_id):
         if node_id == "slow":
@@ -70,3 +74,23 @@ def test_budget_is_checked_before_each_attempt():
     with pytest.raises(BudgetExceeded, match="预算耗尽"):
         scheduler.run(lambda node_id: node_id, run_id="budget", emit=events.append)
     assert [item["node_id"] for item in events if item["kind"] == "abort"] == ["second"]
+
+
+def test_timed_out_callback_keeps_concurrency_slot_until_it_finishes():
+    calls = 0
+
+    def execute(_node_id):
+        nonlocal calls
+        calls += 1
+        time.sleep(0.2)
+
+    scheduler = Scheduler(
+        graph("slow"),
+        policy(concurrency={"max_parallel_nodes": 1, "queue_timeout_s": 0.01},
+               timeout={"default_s": 0.01},
+               retry={"max_attempts": 2, "base_delay_s": 0}),
+    )
+    result = scheduler.run(execute, run_id="cap", emit=lambda _event: None)
+    assert calls == 1
+    assert result["budget"]["calls_used"] == 1
+    assert result["node_status"]["slow"] == "skipped"

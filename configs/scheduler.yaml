@@ -1,7 +1,7 @@
 # 动态调度参数；Scheduler 不在代码中复制这些值。
 concurrency:
-  max_parallel_nodes: 1
-  queue_timeout_s: 0.05
+  max_parallel_nodes: 2
+  queue_timeout_s: 1.0
 
 retry:
   max_attempts: 3
@@ -11,7 +11,7 @@ retry:
   retry_on: [timeout, rate_limit, server_error]
 
 timeout:
-  default_s: 0.2
+  default_s: 30.0
   per_node: {}
 
 budget:

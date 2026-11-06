@@ -60,6 +60,8 @@ class Scheduler:
             self.max_parallel_nodes = _positive_int(concurrency["max_parallel_nodes"], "max_parallel_nodes")
             self.queue_timeout_s = _number(concurrency["queue_timeout_s"], "queue_timeout_s")
             self.max_attempts = _positive_int(retry["max_attempts"], "max_attempts")
+            if retry["backoff"] != "exponential":
+                raise ValueError("retry.backoff 只支持 exponential")
             self.base_delay_s = _number(retry["base_delay_s"], "base_delay_s", allow_zero=True)
             self.max_delay_s = _number(retry["max_delay_s"], "max_delay_s", allow_zero=True)
             self.retry_on = frozenset(retry["retry_on"])
@@ -158,7 +160,11 @@ class Scheduler:
                     else:
                         calls_used += 1
                         node_status[node_id] = "running"
-                        log(node_id, "start", attempt=attempt)
+                        try:
+                            log(node_id, "start", attempt=attempt)
+                        except Exception:
+                            self._slots.release()
+                            raise
                         started = time.perf_counter()
                         try:
                             outputs[node_id] = self._call(execute, node_id)
