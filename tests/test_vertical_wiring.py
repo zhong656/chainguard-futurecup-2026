@@ -79,3 +79,14 @@ def test_commit_sha_falls_back_to_env(monkeypatch):
     """容器/zip 里没有 .git，必须能从 GIT_COMMIT 拿到，而不是抛异常。"""
     monkeypatch.setenv("GIT_COMMIT", "deadbee")
     assert vertical_slice._commit_sha() == "deadbee"
+
+def test_charts_are_rendered_and_in_manifest(run_with_output):
+    """图表必须进 manifest —— 否则"可核验"只覆盖文本，图可以随便改。"""
+    out, _ = run_with_output
+    artifact = json.loads((out / "delivery_artifact.json").read_text(encoding="utf-8"))
+    paths = [f["path"] for f in artifact["manifest"]["files"]]
+    assert "charts/scorecard.svg" in paths
+    assert "charts/convergence.svg" in paths
+    for name in ("scorecard.svg", "convergence.svg"):
+        svg = (out / "charts" / name).read_text(encoding="utf-8")
+        assert svg.startswith("<svg"), f"{name} 不是合法 SVG"

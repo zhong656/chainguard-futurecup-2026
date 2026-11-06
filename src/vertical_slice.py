@@ -50,6 +50,27 @@ def _commit_sha() -> str:
         return "unknown"
 
 
+def _render_charts(result: dict, directory: Path) -> list[Path]:
+    """评分卡五维 + Self-Loop 收敛曲线。图表也进 manifest，否则"可核验"只覆盖文本。"""
+    from src.tools import chart
+
+    charts = directory / "charts"
+    charts.mkdir(parents=True, exist_ok=True)
+    metrics = result["scorecard"]["metrics"]
+    out = [chart.bar_chart(list(metrics), [float(v) for v in metrics.values()],
+                         charts / "scorecard.svg", title="评分卡五维")]
+    rounds = result.get("rounds") or []
+    if rounds:
+        out.append(chart.line_chart(
+            [f"R{r['round']}" for r in rounds],
+            [float(r["score"]) for r in rounds],
+            charts / "convergence.svg",
+            title="Self-Loop 收敛",
+            threshold=float(result["scorecard"]["threshold"]),
+        ))
+    return out
+
+
 def export_delivery(result: dict, directory: Path) -> dict:
     """校验真实引用，写四件交付物及可复核的 manifest。"""
     if result["scorecard"]["verdict"] != "pass":
@@ -77,11 +98,15 @@ def export_delivery(result: dict, directory: Path) -> dict:
     (directory / "rounds.json").write_text(
         json.dumps(result.get("rounds", []), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
+    chart_paths = _render_charts(result, directory)
     names = ("solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl", "rounds.json")
     files = []
     for name in names:
         payload = (directory / name).read_bytes()
         files.append({"path": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
+    for path in chart_paths:
+        payload = path.read_bytes()
+        files.append({"path": f"charts/{path.name}", "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
     commit_sha = _commit_sha()
     artifact = {
         "solution": {"path": "solution.md", "sha256": files[0]["sha256"],
