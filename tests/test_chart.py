@@ -91,6 +91,24 @@ def test_all_zero_values_do_not_crash(tmp_path):
     ET.fromstring(out.read_text(encoding="utf-8"))
 
 
+def test_negative_bar_value_is_rejected_instead_of_drawing_negative_height(tmp_path):
+    with pytest.raises(chart.ChartError, match="负值"):
+        chart.bar_chart(["收益", "亏损"], [1.0, -0.5], tmp_path / "bad.svg")
+    assert not (tmp_path / "bad.svg").exists()
+
+
+def test_threshold_remains_visible_when_every_round_is_below_it(tmp_path):
+    out = chart.line_chart(["R0", "R1"], [0.4, 0.5], tmp_path / "below.svg", threshold=0.85)
+    text = out.read_text(encoding="utf-8")
+    ET.fromstring(text)
+    assert "阈值 0.85" in text
+
+
+def test_nonfinite_threshold_is_rejected(tmp_path):
+    with pytest.raises(chart.ChartError, match="threshold"):
+        chart.line_chart(["R0"], [0.5], tmp_path / "bad.svg", threshold=float("nan"))
+
+
 def test_real_use_case_roi_comparison(tmp_path):
     """真实场景：三个方案的一次性投入对比。"""
     out = chart.bar_chart(

@@ -90,6 +90,8 @@ def bar_chart(
 ) -> Path:
     """竖向柱状图。适合成本对比、各维度得分。"""
     _check(labels, values)
+    if any(v < 0 for v in values):
+        raise ChartError("柱状图不支持负值，不能生成负高度柱")
     peak = _empty_guard([float(v) for v in values])
     plot_w = width - PAD_LEFT - PAD_RIGHT
     plot_h = height - PAD_TOP - PAD_BOTTOM
@@ -146,8 +148,16 @@ def line_chart(
 ) -> Path:
     """折线图。适合 Self-Loop 的分数收敛曲线（每轮一个点）。"""
     _check(labels, values)
-    low = min([0.0, *[float(v) for v in values]])
-    high = max([0.0, *[float(v) for v in values]]) or 1.0
+    if threshold is not None and (
+        isinstance(threshold, bool) or not isinstance(threshold, (int, float))
+        or not math.isfinite(float(threshold))
+    ):
+        raise ChartError("threshold 必须是有限数值")
+    axis_values = [0.0, *[float(v) for v in values]]
+    if threshold is not None:
+        axis_values.append(float(threshold))
+    low = min(axis_values)
+    high = max(axis_values) or 1.0
     span = (high - low) or 1.0
     plot_w = width - PAD_LEFT - PAD_RIGHT
     plot_h = height - PAD_TOP - PAD_BOTTOM
@@ -175,7 +185,7 @@ def line_chart(
         f'x2="{width - PAD_RIGHT}" y2="{PAD_TOP + plot_h}"/>'
     )
     # 阈值参考线：Self-Loop 的 pass_threshold，一眼看出哪轮跨过
-    if threshold is not None and low <= threshold <= high:
+    if threshold is not None:
         ty = y_of(threshold)
         body.append(
             f'<line x1="{PAD_LEFT}" y1="{ty:.1f}" x2="{width - PAD_RIGHT}" y2="{ty:.1f}" '
