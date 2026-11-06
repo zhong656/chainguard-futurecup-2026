@@ -60,6 +60,25 @@ def load_sources(path: Path = DEFAULT_SOURCES) -> list[dict]:
     return list(data.get("sources") or [])
 
 
+def _legal_cutoff(text: str) -> int:
+    """返回合规声明小节的起始位置；没有则返回文本长度（即不截断）。"""
+    match = re.search(r"^##\s*三、", text, flags=re.M)
+    return match.start() if match else len(text)
+
+
+def _front_matter_end(text: str) -> int:
+    """返回 YAML front-matter 结束后的位置；没有 front-matter 则返回 0。
+
+    front-matter 里有 doc_id / legal_basis / url 等元数据，属于**登记信息**而非正文：
+    若参与切片，"版权""署名"这类查询会命中它，检索结果里全是样板文字。
+    """
+    if not text.startswith("---"):
+        return 0
+    match = re.search(r"^---\s*$", text[3:], flags=re.M)
+    return 3 + match.end() if match else 0
+
+
+
 def _split_paragraphs(text: str) -> list[tuple[int, int]]:
     """按空行切段，返回每段的 (start, end) 字符区间。
 
@@ -95,7 +114,13 @@ def build_index(
         if not f.exists():
             continue
         text = f.read_text(encoding="utf-8")
+        # 语料卡的「三、权利依据 / 四、禁止做的事 / 五、引用写法」是合规声明，
+        # 与检索无关，还会让"版权/署名"类查询命中样板段。按原文字符位置跳过。
+        body_start = _front_matter_end(text)
+        cutoff = _legal_cutoff(text)
         for start, end in _split_paragraphs(text):
+            if start < body_start or start >= cutoff:
+                continue
             piece = text[start:end]
             chunks.append(
                 Chunk(
