@@ -20,6 +20,7 @@ from src.knowledge_hub import DEFAULT_CORPUS, DEFAULT_SOURCES, build_index, load
 from src.llm_adapter import MockLLMAdapter, parse_draft
 from src.loop_controller import LoopController
 from src.rule_checker import check
+from src.verifier import default_verifier
 from src.trace import digest, event, write_trace
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +37,17 @@ def _render_solution(draft: dict) -> str:
         lines.extend(f"[{source_id}]" for source_id in section["citations"])
         lines.append("")
     return "\n".join(lines).rstrip() + "\n"
+
+
+def _commit_sha() -> str:
+    """容器/zip 里没有 .git，优先读环境变量，其次 git，最后 unknown。"""
+    import os
+    if os.environ.get("GIT_COMMIT"):
+        return os.environ["GIT_COMMIT"]
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    except (OSError, subprocess.SubprocessError):
+        return "unknown"
 
 
 def export_delivery(result: dict, directory: Path) -> dict:
@@ -62,12 +74,15 @@ def export_delivery(result: dict, directory: Path) -> dict:
         json.dumps(result["scorecard"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     write_trace(directory / "trace.jsonl", result["events"])
-    names = ("solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl")
+    (directory / "rounds.json").write_text(
+        json.dumps(result.get("rounds", []), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    names = ("solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl", "rounds.json")
     files = []
     for name in names:
         payload = (directory / name).read_bytes()
         files.append({"path": name, "sha256": hashlib.sha256(payload).hexdigest(), "bytes": len(payload)})
-    commit_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    commit_sha = _commit_sha()
     artifact = {
         "solution": {"path": "solution.md", "sha256": files[0]["sha256"],
                      "sections": [section["title"] for section in draft["sections"]]},
@@ -111,6 +126,7 @@ def run_vertical_slice(
     config_version = digest({"workflow": graph.nodes, "loop": graph.loop, "policy": policy})
     results: dict = {}
     events: list[dict] = []
+    rounds: list[dict] = []   # 每轮评分卡：fail→pass 的物证，最终写进 rounds.json
     active = set(graph.nodes)
     round_number = 0
     pool = EvidencePool(chunks)
@@ -138,7 +154,8 @@ def run_vertical_slice(
             )
             return {"response": response, "draft": parse_draft(response)}
         if node_id == "verify":
-            return check(results["write"]["draft"], pool)
+            # L2 内部会先跑 L1 再合并，这里不要重复调用 check
+            return default_verifier().verify(results["write"]["draft"], pool)
         if node_id == "gate":
             return asdict(controller.decide(results["verify"]))
         if node_id == "revise":
@@ -175,6 +192,13 @@ def run_vertical_slice(
                 events.append(event(trace_id, run_id, node_id, "end", round=round_number,
                                     output_value=value, duration_ms=int((perf_counter() - started) * 1000),
                                     config_version=config_version))
+        card = results["verify"]
+        rounds.append({
+            "round": round_number,
+            "score": card["score"],
+            "verdict": card["verdict"],
+            "issues": card["issues"],
+        })
         decision = results["gate"]
         if decision["action"] == "pass":
             break
@@ -191,7 +215,7 @@ def run_vertical_slice(
     result = {
         "run_id": run_id, "round": round_number, "draft": results["write"]["draft"],
         "llm_response": results["write"]["response"], "retrieval": results["retrieve"],
-        "scorecard": results["verify"], "events": events, "chunks": chunks,
+        "scorecard": results["verify"], "events": events, "chunks": chunks, "rounds": rounds,
         "config_version": config_version,
     }
     if output is not None:
