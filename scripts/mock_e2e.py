@@ -32,7 +32,7 @@ def build() -> dict:
     sol_bytes = solution.encode("utf-8")
 
     evidence = [
-        {"source_id": "mv:doc001", "doc_id": "doc001", "text": "示例证据片段"},
+        {"source_id": "kb:a1_gb_t_40659_2021_info", "doc_id": "a1_gb_t_40659_2021_info", "text": "示例证据片段"},
     ]
     (OUT / "evidence_chain.json").write_text(
         json.dumps(evidence, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -80,7 +80,7 @@ def build() -> dict:
             "sha256": sha256_bytes(sol_bytes),
             "sections": ["现状痛点"],
         },
-        "evidence_chain": ["mv:doc001"],
+        "evidence_chain": ["kb:a1_gb_t_40659_2021_info"],
         "scorecard": scorecard,
         "trace_bundle": trace,
         "manifest": {
