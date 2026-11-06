@@ -39,6 +39,12 @@ svg .node .type{font-size:10px;fill:#8b99a8}
 svg .running rect{fill:#e0f4f4;stroke:#0d939c;stroke-width:2.5}
 svg .done rect{fill:#e8f5ef;stroke:#62a789}
 svg .failed rect{fill:#fcebea;stroke:#d57d76}
+svg .retrying rect,svg .degraded rect{fill:#fff1d8;stroke:#c19030;stroke-width:2.5}
+svg .revising rect{fill:#efe5ff;stroke:#9773bf;stroke-width:2.5}
+.review{border-left:3px solid #62a789;padding:10px 12px;margin:12px 0;background:#f5faf7}
+.review.fail,.review.abort{border-color:#c5655b;background:#fff5f3}
+.review pre{margin-bottom:0;max-height:180px}
+#api-base{font:inherit;padding:10px;border:1px solid #cfdae4;border-radius:6px}
 .columns{display:grid;grid-template-columns:1fr 1fr;gap:22px}
 .columns>.panel{min-width:0}
 .secondary{background:#edf5f5;color:#24737c;font-size:12px;padding:9px 13px}
@@ -49,6 +55,8 @@ svg .failed rect{fill:#fcebea;stroke:#d57d76}
 .event b{font-size:11px;color:#14828b}
 .event.fail b,.event.abort b{color:#b65b4e}
 .event.revise b{color:#ad8127}
+.event.future{opacity:.35}
+.event.current{background:#edf7f7;border-left:3px solid #087d89;padding-left:6px}
 .event span{color:#4e6175;overflow-wrap:anywhere}
 .event i{display:block;color:#909baa;font-size:10px;font-style:normal}
 pre{white-space:pre-wrap;overflow-wrap:anywhere;font:12px/1.85 "Microsoft YaHei",sans-serif;background:#f6f8fb;border-radius:6px;padding:16px;max-height:300px;overflow:auto}
