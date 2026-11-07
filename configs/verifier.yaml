@@ -11,11 +11,12 @@
 #   layers / rules / feedback 仍是待定占位，阶段 3 落地时再填。
 # ============================================================
 
-# layers：三层验证开关（L1 确定性兜底 → L2 模型交叉 → L3 双路比对）
-# layers:
-#   rules: true        # L1 规则验证器：引用真实性 / 数值一致性 / 章节完整性 / Schema
-#   llm_judge: true    # L2 独立 Verifier Agent（提示词与温度须与 writer 不同）
-#   cross_check: true  # L3 双路检索比对：同一结论用两条检索路径验证
+# layers：三层验证开关（L1 确定性兜底 → L2 独立判定 → L3 双路比对）。
+# L2 当前使用可复现的 Mock/规则判定；接真实模型仍走同一 verify 接口。
+layers:
+  rules: true
+  llm_judge: true
+  cross_check: false
 
 # scorecard：评分维度与权重（合计必须为 1.0）
 scorecard:

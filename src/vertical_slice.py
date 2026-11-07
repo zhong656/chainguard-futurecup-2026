@@ -24,6 +24,7 @@ from src.verifier import default_verifier
 from src.trace import digest, event, write_trace
 
 ROOT = Path(__file__).resolve().parents[1]
+VERIFIER_CONFIG = ROOT / "configs" / "verifier.yaml"
 
 
 class VerticalSliceError(RuntimeError):
@@ -143,12 +144,21 @@ def run_vertical_slice(
     if not chunks:
         raise VerticalSliceError("语料清单没有可检索片段")
     graph = compile_workflow(ROOT / "workflows" / "industry_solution.yaml")
-    policy = yaml.safe_load((ROOT / "configs" / "verifier.yaml").read_text(encoding="utf-8"))["scorecard"]
+    verifier_config = yaml.safe_load(VERIFIER_CONFIG.read_text(encoding="utf-8")) or {}
+    policy = verifier_config["scorecard"]
+    layers = verifier_config["layers"]
+    if layers.get("rules") is not True:
+        raise ValueError("L1 rules 必须开启")
+    if layers.get("cross_check") is not False:
+        raise ValueError("L3 cross_check 尚未实现，必须关闭")
+    if not isinstance(layers.get("llm_judge"), bool):
+        raise ValueError("L2 llm_judge 必须是布尔值")
     adapter = MockLLMAdapter()
     controller = LoopController(graph, policy)
     run_id = run_id or "mock-" + uuid4().hex[:12]
     trace_id = run_id + "-trace"
-    config_version = digest({"workflow": graph.nodes, "loop": graph.loop, "policy": policy})
+    config_version = digest({"workflow": graph.nodes, "loop": graph.loop,
+                             "policy": policy, "layers": layers})
     results: dict = {}
     events: list[dict] = []
     rounds: list[dict] = []   # 每轮评分卡：fail→pass 的物证，最终写进 rounds.json
@@ -179,8 +189,11 @@ def run_vertical_slice(
             )
             return {"response": response, "draft": parse_draft(response)}
         if node_id == "verify":
-            # L2 内部会先跑 L1 再合并，这里不要重复调用 check
-            return default_verifier().verify(results["write"]["draft"], pool)
+            draft = results["write"]["draft"]
+            # L2 内部会先跑 L1 再合并；关闭 llm_judge 时保留纯 L1 路径。
+            if layers["llm_judge"]:
+                return default_verifier().verify(draft, pool)
+            return check(draft, pool)
         if node_id == "gate":
             return asdict(controller.decide(results["verify"]))
         if node_id == "revise":

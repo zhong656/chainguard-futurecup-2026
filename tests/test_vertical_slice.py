@@ -6,6 +6,7 @@ import hashlib
 import json
 
 import pytest
+import yaml
 
 from scripts._schema import validator
 from src.llm_adapter import MockLLMAdapter, parse_draft
@@ -54,6 +55,51 @@ def test_vertical_slice_without_injected_gap_passes_without_revision(tmp_path):
     result = run_vertical_slice("产线质检", output=tmp_path, inject_initial_gap=False)
     assert result["round"] == 0
     assert result["scorecard"]["verdict"] == "pass"
+
+
+def test_vertical_slice_uses_l2_when_enabled(tmp_path, monkeypatch):
+    import src.vertical_slice as vertical_slice
+
+    called = []
+    original = vertical_slice.default_verifier
+
+    def wrapped():
+        called.append(True)
+        return original()
+
+    monkeypatch.setattr(vertical_slice, "default_verifier", wrapped)
+    result = run_vertical_slice("产线质检", output=tmp_path, inject_initial_gap=False)
+    assert called
+    assert result["scorecard"]["metrics"]["logic"] == 1.0
+
+
+def test_vertical_slice_uses_l1_when_l2_disabled(tmp_path, monkeypatch):
+    import src.vertical_slice as vertical_slice
+
+    config = yaml.safe_load(vertical_slice.VERIFIER_CONFIG.read_text(encoding="utf-8"))
+    config["layers"]["llm_judge"] = False
+    config_path = tmp_path / "verifier.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    monkeypatch.setattr(vertical_slice, "VERIFIER_CONFIG", config_path)
+    monkeypatch.setattr(
+        vertical_slice, "default_verifier",
+        lambda: pytest.fail("L2 不应执行"),
+    )
+    result = run_vertical_slice("产线质检", output=tmp_path, inject_initial_gap=False)
+    assert result["scorecard"]["verdict"] == "pass"
+
+
+@pytest.mark.parametrize("key,value", [("rules", False), ("cross_check", True)])
+def test_vertical_slice_rejects_unsupported_layers(tmp_path, monkeypatch, key, value):
+    import src.vertical_slice as vertical_slice
+
+    config = yaml.safe_load(vertical_slice.VERIFIER_CONFIG.read_text(encoding="utf-8"))
+    config["layers"][key] = value
+    config_path = tmp_path / "verifier.yaml"
+    config_path.write_text(yaml.safe_dump(config), encoding="utf-8")
+    monkeypatch.setattr(vertical_slice, "VERIFIER_CONFIG", config_path)
+    with pytest.raises(ValueError, match="必须开启|尚未实现"):
+        run_vertical_slice("产线质检")
 
 
 def test_vertical_slice_rejects_missing_source_manifest(tmp_path):
