@@ -1,0 +1,102 @@
+# 检索评测集（Owner: B）
+#
+# 用途：给「知识库定义与集成」这个考察点提供**可复现的命中率证据**。
+# 口径：
+#   - 每条查询标注期望命中的 source_id（由人工确定，不由程序反推）
+#   - hit@k：期望的 source_id 出现在返回的 top_k 里即算命中
+#   - MRR  ：命中项的排名倒数，衡量"排得靠不靠前"
+#
+# 注意：当前语料是 5 篇**占位稿**，本评测证明的是「链路能查准」，
+# 不代表真实语料下的检索质量。换成真实资料后必须重跑并重标期望值。
+
+version: 1
+top_k: 8
+
+queries:
+  # ---- mv:doc001 机器视觉质检现状 ----
+  - id: q01
+    query: 漏检率 定义
+    expected: [mv:doc001]
+  - id: q02
+    query: 光源不稳定 亮度漂移
+    expected: [mv:doc001]
+  - id: q03
+    query: 工件表面反光 高光 缺陷
+    expected: [mv:doc001]
+  - id: q04
+    query: 过杀率 良品判缺陷
+    expected: [mv:doc001]
+
+  # ---- mv:doc002 改造成本区间 ----
+  - id: q05
+    query: 单工位改造成本 投入区间
+    expected: [mv:doc002]
+  - id: q06
+    query: 相机与镜头 占比
+    expected: [mv:doc002]
+  - id: q07
+    query: 算法与调试 成本占比
+    expected: [mv:doc002]
+  - id: q08
+    query: 回收周期 复检人力
+    expected: [mv:doc002]
+
+  # ---- web:doc007 边缘部署形态 ----
+  - id: q09
+    query: 边缘盒子 时延
+    expected: [web:doc007]
+  - id: q10
+    query: 云端推理 依赖带宽
+    expected: [web:doc007]
+  - id: q11
+    query: 产线不允许停机 模型更新
+    expected: [web:doc007]
+  - id: q12
+    query: 断网 离线运行
+    expected: [web:doc007]
+
+  # ---- csv:param001 ROI 测算假设 ----
+  - id: q13
+    query: ROI 测算 年化收益
+    expected: [csv:param001]
+  - id: q14
+    query: 折旧年限 一次性投入
+    expected: [csv:param001]
+  - id: q15
+    query: 复检人数 人均年成本
+    expected: [csv:param001]
+  - id: q16
+    query: 只有结论没有假设 判定
+    expected: [csv:param001]
+
+  # ---- mv:doc003 合规要求 ----
+  - id: q17
+    query: 图像含人脸 个人信息
+    expected: [mv:doc003]
+  - id: q18
+    query: 数据出境 第三方算法服务
+    expected: [mv:doc003]
+  - id: q19
+    query: 留存期限 策略
+    expected: [mv:doc003]
+  - id: q20
+    query: 企业名 虚构 演示数据
+    expected: [mv:doc003]
+
+  # ---- 改述查询（不直接复用原文用词，考验泛化能力）----
+  # 这一组预期会低于上一组；如果它也是 100%，说明查询和语料耦合太紧、评测失去意义。
+  - id: h01
+    query: 拍照检查产品有没有瑕疵
+    expected: [mv:doc001]
+  - id: h02
+    query: 一条产线改造要花多少钱
+    expected: [mv:doc002]
+  - id: h03
+    query: 车间里放一台机器自己算行不行
+    expected: [web:doc007]
+  - id: h04
+    query: 这笔投入几年能赚回来
+    expected: [csv:param001]
+  - id: h05
+    query: 拍到人的脸要怎么办
+    expected: [mv:doc003]
