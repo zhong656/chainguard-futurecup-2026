@@ -103,3 +103,35 @@ jobs:
           print("")
           print("复核要求：≥1 名非 Owner 的成员 approve，且 make check 绿灯。")
           PY
+
+
+  # 容器验证：Docker 需要管理员权限 + WSL2，不是每台开发机都有；
+  # GitHub runner 自带 Docker，所以放到 CI —— 每次 PR 都真构建一次镜像。
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t chainguard:ci .
+
+      - name: Start container
+        run: |
+          docker run -d --name cg -p 8000:8000 \
+            -e GIT_COMMIT=$(git rev-parse HEAD) chainguard:ci
+
+      - name: Verify container endpoints
+        run: |
+          python -m pip install --quiet "httpx==0.28.1"
+          python scripts/verify_container.py
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs cg || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f cg || true
+          docker image rm chainguard:ci || true
