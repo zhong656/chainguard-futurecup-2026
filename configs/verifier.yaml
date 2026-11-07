@@ -8,8 +8,10 @@
 # ------------------------------------------------------------
 # 状态：
 #   scorecard 段已定稿（2026-11-05，C，见 docs/CHANGELOG-contracts.md）；
-#   layers 段已落地（2026-11-07，B）：代码真的读它，不是装饰；
-#   rules / feedback 仍是待定占位。
+#   layers 段已落地（2026-11-07，B，#59）：代码真的读它，不是装饰；
+#   rules 段已按代码真实行为回填（2026-11-06，C，见下方 rules 段）；
+#   feedback 段仍为注释占位：反馈库代码已由 #60 合入 main（src/feedback.py，
+#     任务单 #42 已关闭），但本文件的 feedback 配置尚无代码消费，不写假配置。
 # ============================================================
 
 # layers：三层验证开关（L1 确定性兜底 → L2 模型交叉 → L3 双路比对）
@@ -53,18 +55,26 @@ scorecard:
 #       （见 contracts/examples/scorecard.good.json）
 
 # rules：L1 规则验证器细则
-# rules:
+# 只有 sections.required 会被 src/rule_checker.py 读取；schema.strict 是对
+# 既有行为的如实声明（draft 一直按契约严格校验），不是可切换的开关。
+# 其余项尚无代码消费，故保留注释，避免「配置写 true、实际没做」的假配置。
+# 注：#59 的 _layers() / check_layers() 只校验 layers 段，rules 段不参与开关校验。
+rules:
+  sections:
+    # 与 src/rule_checker.py 的 DEFAULT_REQUIRED_SECTIONS 完全一致：
+    # 回填后配置成为事实来源，检查行为不变。
+    required: [现状痛点, 技术选型, 数据方案, 实施阶段, 成本与ROI, 风险与合规]
+  schema:
+    strict: true                   # draft 必须通过 contracts/draft.schema.json 校验
 #   citation:
-#     require_source_id: true        # 段落无 source_id 直接判不合格
-#     verify_quote_exists: true      # 引用原文必须能在语料中检索到
+#     require_source_id: true      # L1 现报 CITATION_MISSING，尚未做成开关
+#     verify_quote_exists: false   # 引用原文逐字比对尚未实现，勿填 true
 #   numeric:
-#     tolerance: <待定>              # 数值比对容差
-#   sections:
-#     required: [现状痛点, 技术选型, 数据方案, 实施阶段, 成本与ROI, 风险与合规]
-#   schema:
-#     strict: true                   # 输出必须匹配 Pydantic 模型
+#     tolerance: <待定>            # L1 现为「数字集合精确包含」比对，无容差概念
 
 # feedback：失败样本落库与离线优化（对应「反馈优化」证据）
+# 状态（2026-11-07，C）：反馈库已由 #60 合入 main（#42 已关闭）；
+# 本段配置仍无代码消费，保持注释占位，不写「配置写了 true、实际没做」的假配置。
 # feedback:
 #   db_path: feedback.db             # 不入库（.gitignore 已忽略 *.db）
 #   types: [citation_hallucination, numeric_mismatch, missing_section, timeout]
