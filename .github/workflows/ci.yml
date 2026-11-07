@@ -27,11 +27,24 @@ jobs:
 
       # 只装检查所需的最小依赖：完整 requirements.txt 含 chromadb 等重依赖，
       # 在 CI 里安装会让每次检查多花数分钟，且与「快速反馈」目标冲突。
+      #
+      # fastapi / httpx / uvicorn 是"轻但有意义"的依赖，必须装：
+      #   - tests/test_api.py 用 pytest.importorskip("fastapi")，不装的话 4 条
+      #     API 测试会被**静默跳过**，API 坏了 CI 依然全绿；
+      #   - scripts/verify_http.py 需要 uvicorn，用来验证服务真能起来。
       - name: Install check deps
-        run: python -m pip install --upgrade pip && python -m pip install pyyaml jsonschema pytest
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install pyyaml jsonschema pytest
+          python -m pip install "fastapi==0.162.0" "httpx==0.28.1" "uvicorn==0.54.0"
 
       - name: make check
         run: make check
+
+      # 真实 HTTP 验证：TestClient 是进程内 ASGI 调用，证明不了"能作为服务起来"。
+      # 这里起真实 uvicorn、走 socket 打三个接口（POST /runs、SSE、artifacts）。
+      - name: Verify HTTP service
+        run: python scripts/verify_http.py
 
       # 生成物必须留在本地/CI artifact，不得进 PR（否则每个 PR 都会互相冲突）
       - name: Guard generated files
@@ -90,3 +103,35 @@ jobs:
           print("")
           print("复核要求：≥1 名非 Owner 的成员 approve，且 make check 绿灯。")
           PY
+
+
+  # 容器验证：Docker 需要管理员权限 + WSL2，不是每台开发机都有；
+  # GitHub runner 自带 Docker，所以放到 CI —— 每次 PR 都真构建一次镜像。
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t chainguard:ci .
+
+      - name: Start container
+        run: |
+          docker run -d --name cg -p 8000:8000 \
+            -e GIT_COMMIT=$(git rev-parse HEAD) chainguard:ci
+
+      - name: Verify container endpoints
+        run: |
+          python -m pip install --quiet "httpx==0.28.1"
+          python scripts/verify_container.py
+
+      - name: Container logs on failure
+        if: failure()
+        run: docker logs cg || true
+
+      - name: Cleanup
+        if: always()
+        run: |
+          docker rm -f cg || true
+          docker image rm chainguard:ci || true
