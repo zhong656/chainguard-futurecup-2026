@@ -131,21 +131,60 @@ class Scheduler:
             return value
         raise value
 
-    def run(self, execute, *, run_id: str, emit) -> dict:
-        """每次调用尝试计入预算；失败的依赖分支自动跳过。"""
+    def run(
+        self,
+        execute,
+        *,
+        run_id: str,
+        emit,
+        active_nodes=None,
+        completed_nodes=None,
+        context: dict[str, Any] | None = None,
+        should_run: Callable[[str, dict[str, Any]], bool] | None = None,
+        event_fields: dict[str, Any] | None = None,
+        budget_used: int = 0,
+    ) -> dict:
+        """执行当前轮的活动节点，并把结果写回 ``context``。
+
+        ``active_nodes`` 让 LoopController 只重跑受影响的子图；
+        ``completed_nodes`` 表示这些节点的结果来自上一轮，依赖检查仍可通过。
+        ``should_run`` 用于 gate 后的条件分支，返回 False 的节点是有意跳过，
+        不会被记录为降级。调用方因此不再需要复制按层遍历和重试逻辑。
+        """
         if not isinstance(run_id, str) or not run_id:
             raise ValueError("run_id 不能为空")
+        active = set(self.graph.nodes) if active_nodes is None else set(active_nodes)
+        if not active <= self.graph.nodes.keys():
+            raise ValueError(f"活动节点不存在：{sorted(active - self.graph.nodes.keys())}")
+        state = context if context is not None else {}
+        completed = set(state) if completed_nodes is None else set(completed_nodes)
+        if not completed <= self.graph.nodes.keys():
+            raise ValueError(f"已完成节点不存在：{sorted(completed - self.graph.nodes.keys())}")
+        if not isinstance(budget_used, int) or isinstance(budget_used, bool) or not 0 <= budget_used <= self.calls_max:
+            raise ValueError("budget_used 必须在 0 和 calls_max 之间")
         trace_id = run_id + "-trace"
         outputs: dict[str, Any] = {}
-        node_status = {node_id: "pending" for node_id in self.graph.nodes}
+        node_status = {
+            node_id: "pending" if node_id in active
+            else "done" if node_id in completed else "skipped"
+            for node_id in self.graph.nodes
+        }
         degraded: list[str] = []
-        calls_used = 0
+        calls_used = budget_used
+        trace_fields = dict(event_fields or {})
+        trace_round = trace_fields.pop("round", 0)
 
         def log(node_id: str, kind: str, **fields: Any) -> None:
-            emit(event(trace_id, run_id, node_id, kind, **fields))
+            emit(event(trace_id, run_id, node_id, kind, round=trace_round,
+                      **trace_fields, **fields))
 
         for layer in self.graph.layers:
             for node_id in layer:
+                if node_id not in active:
+                    continue
+                if should_run is not None and not should_run(node_id, state):
+                    node_status[node_id] = "skipped"
+                    continue
                 if any(node_status[parent] != "done" for parent in self.graph.dependencies[node_id]):
                     node_status[node_id] = "skipped"
                     degraded.append(node_id)
@@ -161,16 +200,19 @@ class Scheduler:
                         calls_used += 1
                         node_status[node_id] = "running"
                         try:
-                            log(node_id, "start", attempt=attempt)
+                            log(node_id, "start", attempt=attempt,
+                                input_value={"node": node_id, "round": trace_round})
                         except Exception:
                             self._slots.release()
                             raise
                         started = time.perf_counter()
                         try:
-                            outputs[node_id] = self._call(execute, node_id)
+                            value = self._call(execute, node_id)
                         except Exception as error:
                             exc = error
                         else:
+                            outputs[node_id] = value
+                            state[node_id] = value
                             node_status[node_id] = "done"
                             log(node_id, "end", attempt=attempt,
                                 duration_ms=int((time.perf_counter() - started) * 1000),
