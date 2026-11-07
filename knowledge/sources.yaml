@@ -1,58 +1,243 @@
-# knowledge/sources.yaml —— 知识源声明
+# knowledge/sources.yaml —— 知识源声明（真实语料版）
 #
 # Owner: B（知识库与工具）
+# 语料来源与许可见 knowledge/ATTRIBUTION.md 与 docs/语料来源与合规.md
+#
 # 约定：
-#   - 每条记录必须能在 knowledge/corpus/ 找到对应文件
-#   - source_id 命名空间白名单：mv（产业/技术文档）/ web（网页摘录）/ csv（结构化参数表）
-#   - status: placeholder 的条目必须在 2026-11-07 前替换为可溯源资料
-#   - 严禁登记任何企业真实生产数据、客户信息、未脱敏内部文档
+#   - source_id 形如 kb:<doc_id>，**不含 chunk 序号**（片段位置由 source_ref.char_range 表达）
+#   - 每条都保留 legal_basis / redistribution / attribution，判定以字段为准，不靠记忆
+#   - 严禁把本语料包传到公开仓库/网盘（见合规说明第五节的边界表）
 
-version: 1
-updated: 2026-11-05
-namespace_whitelist: [mv, web, csv]
+version: 2
+updated: 2026-11-07
+namespace_whitelist: [mv, web, csv, kb]
 
 sources:
-  - source_id: mv:doc001
-    title: 机器视觉质检现状（示例占位）
-    type: md
-    path: corpus/mv_inspection_status.md
-    acquired_at: 2026-11-05
-    license: placeholder
-    status: placeholder
-    replace_by: 2026-11-07
-
-  - source_id: mv:doc002
-    title: 单工位视觉质检改造成本区间（示例占位）
-    type: md
-    path: corpus/mv_cost_range.md
-    acquired_at: 2026-11-05
-    license: placeholder
-    status: placeholder
-    replace_by: 2026-11-07
-
-  - source_id: web:doc007
-    title: 边缘部署形态（示例占位）
-    type: md
-    path: corpus/edge_deploy.md
-    acquired_at: 2026-11-05
-    license: placeholder
-    status: placeholder
-    replace_by: 2026-11-07
-
-  - source_id: csv:param001
-    title: ROI 测算假设（示例占位）
-    type: md
-    path: corpus/roi_assumption.md
-    acquired_at: 2026-11-05
-    license: placeholder
-    status: placeholder
-    replace_by: 2026-11-07
-
-  - source_id: mv:doc003
-    title: 数据合规与安全要求（示例占位）
-    type: md
-    path: corpus/compliance.md
-    acquired_at: 2026-11-05
-    license: placeholder
-    status: placeholder
-    replace_by: 2026-11-07
+- source_id: kb:a1_gb_t_40659_2021_info
+  doc_id: a1_gb_t_40659_2021_info
+  title: GB/T 40659-2021《智能制造 机器视觉在线检测系统 通用要求》标准信息
+  type: md
+  path: corpus/A1_gb_t_40659_2021_info.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家市场监督管理总局、国家标准化管理委员会
+  url: https://openstd.samr.gov.cn/bzgk/gb/newGbInfo?hcno=97379A05D29792BAEDC31E55E03A5499
+  license: 禁止复制网页正文/标准全文；仅可使用事实字段
+  legal_basis: 页面明示「版权所有 侵权必究」；但标准号、名称、状态、日期、分类号属《著作权法》第五条(二)(三)的单纯事实消息与通用数表，不受著作权保护
+  attribution: 引用时标注标准编号与条款号，并给出公开系统链接
+  third_party_text_included: false
+- source_id: kb:a2_basler_vision_fundamentals
+  doc_id: a2_basler_vision_fundamentals
+  title: Fundamentals of Image Processing Systems（成像系统基础）
+  type: md
+  path: corpus/A2_basler_vision_fundamentals.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: Basler AG
+  url: https://www.baslerweb.com/en/learning/fundamentals-image-processing-systems/
+  license: 禁止复制网页正文；仅可作事实性转述与适当引用并附链接
+  legal_basis: Basler AG《Legal notice》：允许引用网站文本，条件是清楚标明来源并提供指向原文的可点击 HTML 链接；明确「No
+    license or anything similar is hereby granted」，且网站内容不得用于广告用途
+  attribution: 写明「引自 Basler AG」并附可点击原页链接；不得用于广告或商业宣传
+  third_party_text_included: false
+- source_id: kb:a3_basler_camera_selection
+  doc_id: a3_basler_camera_selection
+  title: Camera Selection（工业相机选型指南）
+  type: md
+  path: corpus/A3_basler_camera_selection.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: Basler AG
+  url: https://www.baslerweb.com/en-in/learning/camera-selection
+  license: 禁止复制网页正文；通用公式与事实可自由使用
+  legal_basis: 同 A2，Basler AG《Legal notice》：引用须标明来源并附可点击 HTML 链接，未授予任何许可；分辨率计算式属《著作权法》第五条(三)的通用公式
+  attribution: 写明「引自 Basler AG」并附可点击原页链接
+  third_party_text_included: false
+- source_id: kb:a5_sensors_2020_5136
+  doc_id: a5_sensors_2020_5136
+  title: Research Progress of Automated Visual Surface Defect Detection for Industrial
+    Metal Planar Materials
+  type: md
+  path: corpus/A5_sensors_2020_5136.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: MDPI Sensors（作者 Xiaoxin Fang 等）
+  url: https://www.mdpi.com/1424-8220/20/18/5136
+  license: PDF 全文不随作品分发（含第三方图表风险）；仅保留原创摘要卡与 DOI 链接
+  legal_basis: MDPI《Open Access Information and Policy》：文章按 CC BY 4.0 发布，正确署名即可复用；但该政策的重要提示明确，综述文章中的图表可能取自其他出版物，MDPI
+    无权再授权
+  attribution: 引用格式：作者. 标题. Sensors, 2020, 20(18), 5136. DOI 10.3390/s20185136, CC
+    BY 4.0
+  third_party_text_included: false
+- source_id: kb:a6_applsci_2021_7657
+  doc_id: a6_applsci_2021_7657
+  title: 'Surface Defect Detection Methods for Industrial Products: A Review'
+  type: md
+  path: corpus/A6_applsci_2021_7657.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: MDPI Applied Sciences
+  url: https://www.mdpi.com/2076-3417/11/16/7657
+  license: PDF 全文不随作品分发；仅保留原创摘要卡与 DOI 链接
+  legal_basis: CC BY 4.0（MDPI 开放获取政策）；与 A5 同样存在综述内第三方图表不再授权的风险
+  attribution: 引用格式：作者. 标题. Applied Sciences, 2021, 11(16), 7657. DOI 10.3390/app11167657,
+    CC BY 4.0
+  third_party_text_included: false
+- source_id: kb:b1_miit_14th_five_year_smart_manufacturing
+  doc_id: b1_miit_14th_five_year_smart_manufacturing
+  title: 《“十四五”智能制造发展规划》
+  type: md
+  path: corpus/B1_miit_14th_five_year_smart_manufacturing.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 工业和信息化部等八部门
+  url: https://www.miit.gov.cn/zwgk/zcwj/wjfb/tz/art/2021/art_1c779648523c40f3a0e2ea044ff8f24b.html
+  license: 文件文本可自由使用；本包为统一最严标准，不随包分发 PDF 原件
+  legal_basis: 国家机关发布的行政性质文件，依《著作权法》第五条(一)不适用著作权法；规划中的统计数字属第五条(二)单纯事实消息
+  attribution: 标注文件名、文号与发布机关；引用数值须写明「据《十四五智能制造发展规划》」
+  third_party_text_included: false
+- source_id: kb:b3_stats_yearbook_index
+  doc_id: b3_stats_yearbook_index
+  title: 《中国统计年鉴》电子版入口
+  type: md
+  path: corpus/B3_stats_yearbook_index.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家统计局
+  url: https://www.stats.gov.cn/sj/ndsj/
+  license: 不复制网页版式与页面正文；仅作事实性说明
+  legal_basis: 国家统计局《特别声明》：允许转载或引用本网站内容，条件是显著位置注明「引自国家统计局网站」并标明网址 www.stats.gov.cn；网页版式仍受保护
+  attribution: 显著位置注明「引自国家统计局网站」并标 www.stats.gov.cn
+  third_party_text_included: false
+- source_id: kb:b4_stats_citation_notice
+  doc_id: b4_stats_citation_notice
+  title: 国家统计局《特别声明》（引用与版权说明）
+  type: md
+  path: corpus/B4_stats_citation_notice.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家统计局
+  url: https://www.stats.gov.cn/xw/tjxw/tzgg/202302/t20230202_1894062.html
+  license: 可引用关键句；不复制网页版式
+  legal_basis: 官方声明，属国家机关行政性质文件；其内容正是「许可允许引用」的书面依据
+  attribution: 引用时仍须按其要求，在显著位置注明「引自国家统计局网站」并标 www.stats.gov.cn
+  third_party_text_included: false
+- source_id: kb:b5_2025_statistical_bulletin
+  doc_id: b5_2025_statistical_bulletin
+  title: 《中华人民共和国2025年国民经济和社会发展统计公报》
+  type: md
+  path: corpus/B5_2025_statistical_bulletin.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家统计局
+  url: https://www.stats.gov.cn/sj/zxfbhjd/202602/t20260228_1962662.html
+  license: 不复制公报整篇网页；仅使用其中的事实数值并署名
+  legal_basis: 统计数值属《著作权法》第五条(二)单纯事实消息与(三)通用数表；引用条件依 B4 特别声明（显著署名 + www.stats.gov.cn）；网页版式受保护
+  attribution: 显著位置注明「引自国家统计局网站」并标 www.stats.gov.cn
+  third_party_text_included: false
+- source_id: kb:c1_caict_edge_computing_whitepaper
+  doc_id: c1_caict_edge_computing_whitepaper
+  title: 《离散制造业边缘计算解决方案白皮书（征求意见稿）》
+  type: md
+  path: corpus/C1_caict_edge_computing_whitepaper.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 中国信息通信研究院、工业互联网产业联盟
+  url: https://www.caict.ac.cn/kxyj/qwfb/bps/201910/t20191031_268497.htm
+  license: 禁止随作品分发 PDF 原件；仅作事实性转述并注明来源机构
+  legal_basis: 官方页面提供全文下载，版权声明要求转载注明「来源：中国信息通信研究院和工业互联网产业联盟」；未检索到允许再分发 PDF 全文的授权
+  attribution: 注明「来源：中国信息通信研究院和工业互联网产业联盟」并附页面链接
+  third_party_text_included: false
+- source_id: kb:c3_kubeedge_docs
+  doc_id: c3_kubeedge_docs
+  title: KubeEdge 文档（云边协同）
+  type: md
+  path: corpus/C3_kubeedge_docs.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: KubeEdge（LF Edge / CNCF）
+  url: https://kubeedge.io/docs/
+  license: 禁止复制文档正文；仅作事实性转述
+  legal_basis: 文档站页脚明示「Copyright © The KubeEdge Authors. All rights reserved.」，未见开放内容许可；Apache
+    2.0 是代码仓库许可，不适用于文档站内容（此前标注有误，本版已修正）
+  attribution: 注明 KubeEdge 项目与文档链接，不声称获得内容授权
+  third_party_text_included: false
+- source_id: kb:c5_openvino_docs
+  doc_id: c5_openvino_docs
+  title: OpenVINO 文档（边缘推理部署）
+  type: md
+  path: corpus/C5_openvino_docs.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: Intel / OpenVINO
+  url: https://docs.openvino.ai/
+  license: 禁止复制或再分发文档内容；仅作事实性转述
+  legal_basis: OpenVINO《Legal Information》明确：软件及相关文档为 Intel 版权材料，除许可证另有规定外，未经 Intel
+    事先书面许可不得使用、修改、复制、发布、分发或传播文档；Apache 2.0 是代码许可，不覆盖文档（此前标注有误，本版已修正）
+  attribution: 注明 Intel / OpenVINO 与文档链接，不声称获得内容授权
+  third_party_text_included: false
+- source_id: kb:d1_industrial_data_classification_guide
+  doc_id: d1_industrial_data_classification_guide
+  title: 《工业数据分类分级指南（试行）》
+  type: md
+  path: corpus/D1_industrial_data_classification_guide.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 工业和信息化部办公厅
+  url: https://www.gov.cn/zhengce/zhengceku/2020-03/07/content_5488251.htm
+  license: 文件条文可自由使用；本包为统一最严标准只保留要点与条款号
+  legal_basis: 国家机关发布的行政性质规范性文件，依《著作权法》第五条(一)不适用著作权法；中国政府网页脚「版权所有」指向网站版式，不覆盖文件文本
+  attribution: 标注文件名、文号与中国政府网链接
+  third_party_text_included: false
+- source_id: kb:d2_data_security_law
+  doc_id: d2_data_security_law
+  title: 《中华人民共和国数据安全法》
+  type: md
+  path: corpus/D2_data_security_law.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 全国人大常委会
+  url: http://www.npc.gov.cn/c2/c30834/202106/t20210610_311888.html
+  license: 法律条文可自由使用；本包只保留要点与条款指引
+  legal_basis: 法律文本依《著作权法》第五条(一)明确不适用著作权法，可自由使用；网站版式与编排不在此列
+  attribution: 写明法律名称与条号，附中国人大网链接
+  third_party_text_included: false
+- source_id: kb:d4_personal_information_protection_law
+  doc_id: d4_personal_information_protection_law
+  title: 《中华人民共和国个人信息保护法》
+  type: md
+  path: corpus/D4_personal_information_protection_law.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 全国人大常委会（工信部全文转载）
+  url: https://www.miit.gov.cn/zwgk/zcwj/flfg/art/2022/art_04a0f1fb5df244e39688fd5372623a8d.html
+  license: 法律条文可自由使用；本包只保留要点与条款指引
+  legal_basis: 法律文本依《著作权法》第五条(一)不适用著作权法；转载页面的网页版式不在此列
+  attribution: 写明法律名称与条号，附官方全文链接
+  third_party_text_included: false
+- source_id: kb:e1_gb_t_42980_2023_info
+  doc_id: e1_gb_t_42980_2023_info
+  title: GB/T 42980-2023《智能制造 机器视觉在线检测系统 测试方法》标准信息
+  type: md
+  path: corpus/E1_gb_t_42980_2023_info.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家市场监督管理总局、国家标准化管理委员会
+  url: https://openstd.samr.gov.cn/bzgk/gb/newGbInfo?hcno=D0C759F050BA78E80A2F6C0DF476373A
+  license: 禁止复制标准正文与网页内容；仅可使用事实字段
+  legal_basis: 页面明示「版权所有 侵权必究」；标准号、名称、状态、日期、分类号属《著作权法》第五条(二)(三)的单纯事实消息与通用数表
+  attribution: 引用时标注标准编号与条款号，并给出公开系统链接
+  third_party_text_included: false
+- source_id: kb:e2_national_standard_open_guide
+  doc_id: e2_national_standard_open_guide
+  title: 「国家标准公开」办事指南
+  type: md
+  path: corpus/E2_national_standard_open_guide.md
+  acquired_at: '2026-11-07'
+  status: verified
+  publisher: 国家标准化管理委员会
+  url: https://www.sac.gov.cn/bsfw/bszn/art/2020/art_1a1bb5efef0e4cdbb5f2f0cf91435504.html
+  license: 不复制网页版式；要点可转述
+  legal_basis: 国家机关办事指南，属《著作权法》第五条(一)行政性质文件范畴；网页版式仍受保护
+  attribution: 标注发布机构与链接
+  third_party_text_included: false

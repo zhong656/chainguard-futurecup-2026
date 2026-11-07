@@ -29,7 +29,7 @@ def good_draft(**overrides) -> dict:
         "run_id": "run-rule-001",
         "round": 0,
         "sections": [
-            {"title": name, "content": "本段结论均有证据支撑。", "citations": ["mv:doc001"]}
+            {"title": name, "content": "本段结论均有证据支撑。", "citations": ["kb:a1_gb_t_40659_2021_info"]}
             for name in REQUIRED
         ],
     }
@@ -40,7 +40,7 @@ def good_draft(**overrides) -> dict:
 @pytest.fixture
 def evidence() -> dict:
     # 只用 id → 原文 的轻量形态，避免测试依赖占位语料的具体内容。
-    return {"mv:doc001": "产线质检依赖人工复检，漏检率与过杀率同时偏高。"}
+    return {"kb:a1_gb_t_40659_2021_info": "产线质检依赖人工复检，漏检率与过杀率同时偏高。"}
 
 
 def rule_ids(card: dict) -> list[str]:
@@ -61,7 +61,7 @@ def test_bad_example_is_shape_valid_but_quality_bad():
     bad = json.loads((ROOT / "contracts/examples/draft.bad.json").read_text(encoding="utf-8"))
     errors = list(validator("draft.schema.json").iter_errors(bad))
     assert errors, "bad 样例必须被 Draft Schema 拒绝"
-    card = check(bad, {"mv:doc001": "示例证据"})
+    card = check(bad, {"kb:a1_gb_t_40659_2021_info": "示例证据"})
     assert card["verdict"] == "fail"
     assert "SCHEMA_INVALID" in rule_ids(card)
     assert any(i["severity"] == "blocker" for i in card["issues"])
@@ -113,9 +113,9 @@ def test_unparsable_source_id_does_not_break_scorecard_schema(evidence):
 
 
 def test_numeric_mismatch_detected():
-    evidence = {"mv:doc002": "相机与镜头占比 25%–35%，单工位投入 8–15 万元。"}
+    evidence = {"kb:a2_basler_vision_fundamentals": "相机与镜头占比 25%–35%，单工位投入 8–15 万元。"}
     draft = good_draft()
-    draft["sections"][0]["citations"] = ["mv:doc002"]
+    draft["sections"][0]["citations"] = ["kb:a2_basler_vision_fundamentals"]
     draft["sections"][0]["content"] = "相机占比 25%–35%，但单工位投入是 99 万元。"
     card = check(draft, evidence)
     assert "NUMERIC_MISMATCH" in rule_ids(card)
@@ -167,7 +167,7 @@ def test_output_feeds_loop_controller(evidence):
 
 def test_evidence_accepts_chain_and_evidence_pool():
     """evidence 既能收 evidence_chain（只有 id），也能收 B 的 EvidencePool。"""
-    chain = ["mv:doc001", "mv:doc002"]
+    chain = ["kb:a1_gb_t_40659_2021_info", "kb:a2_basler_vision_fundamentals"]
     card = check(good_draft(), chain)
     assert "CITATION_UNKNOWN" not in rule_ids(card)
     assert not EvidenceIndex(chain).has("mv:not_exist")
@@ -176,7 +176,7 @@ def test_evidence_accepts_chain_and_evidence_pool():
 
     pool = EvidencePool()
     pool.add_from_retrieval(
-        {"query": "质检", "mode": "hybrid", "items": [{"source_id": "mv:doc001", "score": 0.9}]}
+        {"query": "质检", "mode": "hybrid", "items": [{"source_id": "kb:a1_gb_t_40659_2021_info", "score": 0.9}]}
     )
     card = check(good_draft(), pool)
     validator("scorecard.schema.json").validate(card)
