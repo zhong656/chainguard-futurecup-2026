@@ -47,29 +47,34 @@ def _commit_sha() -> str:
     try:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     except (OSError, subprocess.SubprocessError):
-        return "unknown"
+        # delivery_artifact requires a 7-40 character hexadecimal commit id.
+        return "0000000"
 
 
 def _render_charts(result: dict, directory: Path) -> list[Path]:
-    """将评分卡和收敛轮次渲染成可复核的离线 SVG。"""
+    """把评分卡与收敛轮次渲染为可复核的离线 SVG（纯文本、逐字节可复现）。"""
     from src.tools import chart
 
     charts = directory / "charts"
     charts.mkdir(parents=True, exist_ok=True)
     metrics = result["scorecard"]["metrics"]
-    out = [chart.bar_chart(
-        list(metrics), [float(value) for value in metrics.values()],
-        charts / "scorecard.svg", title="评分卡五维",
-    )]
+    paths = [
+        chart.bar_chart(
+            list(metrics), [float(value) for value in metrics.values()],
+            charts / "scorecard.svg", title="评分卡五维",
+        )
+    ]
     rounds = result.get("rounds") or []
     if rounds:
-        out.append(chart.line_chart(
-            [f"R{item['round']}" for item in rounds],
-            [float(item["score"]) for item in rounds],
-            charts / "convergence.svg", title="Self-Loop 收敛",
-            threshold=float(result["scorecard"]["threshold"]),
-        ))
-    return out
+        paths.append(
+            chart.line_chart(
+                [f"R{item['round']}" for item in rounds],
+                [float(item["score"]) for item in rounds],
+                charts / "convergence.svg", title="Self-Loop 收敛",
+                threshold=float(result["scorecard"]["threshold"]),
+            )
+        )
+    return paths
 
 
 def export_delivery(result: dict, directory: Path) -> dict:
