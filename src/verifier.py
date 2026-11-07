@@ -88,6 +88,41 @@ def _policy() -> dict:
     return (yaml.safe_load(CONFIG.read_text(encoding="utf-8")) or {})["scorecard"]
 
 
+DEFAULT_LAYERS: dict[str, bool] = {"rules": True, "llm_judge": True, "cross_check": False}
+
+
+def _layers(config_path: Path | None = None) -> dict[str, bool]:
+    """读取三层验证开关；缺省按 DEFAULT_LAYERS，避免"没写=关掉"这种危险默认。"""
+    raw = yaml.safe_load((config_path or CONFIG).read_text(encoding="utf-8")) or {}
+    declared = raw.get("layers") or {}
+    layers = dict(DEFAULT_LAYERS)
+    for key, value in declared.items():
+        if key in layers:
+            layers[key] = bool(value)
+    return layers
+
+
+def check_layers(layers: dict) -> None:
+    """校验开关组合是否可实现。
+
+    两条必须挡住的情况：
+    1. `rules: false` —— L1 是确定性兜底，其余四个维度都依赖它；关掉后评分卡
+       只能凭空填分，比不开验证更危险。
+    2. `cross_check: true` —— L3 尚未实现。让它"打开"后被静默忽略，等于对外
+       宣称了做不到的能力；宁可启动失败，也不要假装做了。
+    """
+    if not layers.get("rules", True):
+        raise VerifierConfigError(
+            "layers.rules 不能关闭：L1 是确定性兜底，关闭后 citation/consistency/"
+            "coverage/format 四个维度失去数据来源，评分卡只能凭空填分"
+        )
+    if layers.get("cross_check", False):
+        raise VerifierConfigError(
+            "layers.cross_check 已设为 true，但 L3（双路检索比对）尚未实现。"
+            "请在实现后再打开——不能让未实现的层被配置打开后静默忽略"
+        )
+
+
 def _bigrams(text: str) -> set[str]:
     """中文二字词集合：不装分词库，也能判断两段文字有没有实质重合。"""
     chars = "".join(CJK_RE.findall(text))
@@ -214,12 +249,14 @@ def _merge(l1_card: dict, judgement: L2Judgement, policy: dict) -> dict:
 class Verifier:
     """一次运行一个实例；默认配置来自 AgentRegistry（角色注册表）。"""
 
-    def __init__(self, verifier_spec=None, writer_spec=None, registry=None) -> None:
+    def __init__(self, verifier_spec=None, writer_spec=None, registry=None, layers=None) -> None:
         reg = registry if registry is not None else default_registry()
         self.verifier_spec = dict(
             verifier_spec if verifier_spec is not None else reg.get("verifier")
         )
         self.writer_spec = dict(writer_spec if writer_spec is not None else reg.get("writer"))
+        self.layers = dict(DEFAULT_LAYERS if layers is None else layers)
+        check_layers(self.layers)
         self._assert_independent()
 
     def _assert_independent(self) -> None:
@@ -250,8 +287,14 @@ class Verifier:
         )
 
     def verify(self, draft: dict, evidence=None, judge_fn=None) -> dict:
-        """返回可直接喂 LoopController 的完整评分卡。"""
+        """返回可直接喂 LoopController 的完整评分卡。
+
+        L1 恒开（`check_layers` 保证）；`llm_judge` 关闭时只返回 L1 卡，
+        logic 保持 1.0 —— 没做 L2 就承认没做，不臆造分数。
+        """
         l1_card = l1_check(draft, evidence)
+        if not self.layers.get("llm_judge", True):
+            return l1_card
         judgement = self.judge(draft, evidence, judge_fn)
         return _merge(l1_card, judgement, _policy())
 
@@ -262,7 +305,7 @@ _default: Verifier | None = None
 def default_verifier() -> Verifier:
     global _default
     if _default is None:
-        _default = Verifier()
+        _default = Verifier(layers=_layers())
     return _default
 
 
