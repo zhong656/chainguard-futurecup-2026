@@ -50,3 +50,18 @@
   `agent_spec` 的 `read_only` 字段   C   11-06  
   `requirements.txt` 版本锁定   A   11-06  
   评委如何看待 private 仓库代码（打包 zip / 邀请 / 临时公开）   A   11-10  
+
+## 2026-11-07 · 契约冻结 v1.0（B）
+
+**冻结动作**：11 份 JSON Schema 全部定稿，打 tag contracts-v1.0（提交 194f63d）。
+
+| 项 | 结果 |
+| --- | --- |
+| 契约数 | 11（draft 于 #28 加入） |
+| 正反例 | 11 组全部符合预期（正例通过、反例被拒） |
+| 跨契约引用 | 	arget_node 全部可解析（11 个节点） |
+| 命名空间白名单 | mv / web / csv / kb（kb 于本次冻结前新增，见 CHANGELOG-contracts） |
+
+**冻结后规则**：任何字段增删、必填项变化、pattern 修改，一律走 contract-change
+（提案 → 影响面说明 → 全量 make check → 记录到 CHANGELOG-contracts.md），并同步更新正反例。
+**描述文本的澄清**（不改变校验行为）可由契约 Owner 直接提交，需在 CHANGELOG 记一行。
