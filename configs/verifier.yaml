@@ -8,14 +8,25 @@
 # ------------------------------------------------------------
 # 状态：
 #   scorecard 段已定稿（2026-11-05，C，见 docs/CHANGELOG-contracts.md）；
-#   layers / rules / feedback 仍是待定占位，阶段 3 落地时再填。
+#   layers 段已落地（2026-11-07，B）：代码真的读它，不是装饰；
+#   rules / feedback 仍是待定占位。
 # ============================================================
 
 # layers：三层验证开关（L1 确定性兜底 → L2 模型交叉 → L3 双路比对）
-# layers:
-#   rules: true        # L1 规则验证器：引用真实性 / 数值一致性 / 章节完整性 / Schema
-#   llm_judge: true    # L2 独立 Verifier Agent（提示词与温度须与 writer 不同）
-#   cross_check: true  # L3 双路检索比对：同一结论用两条检索路径验证
+#
+# 语义（由 src/verifier.py 强制执行）：
+#   rules       L1 规则验证器。**必须为 true**：它是确定性兜底，关掉后
+#               citation/consistency/coverage/format 四个维度就没有数据来源，
+#               代码会直接拒绝启动，而不是让评分卡凭空填 1.0。
+#   llm_judge   L2 独立 Verifier Agent（温度须与 writer 不同）。可关闭：
+#               关掉时只返回 L1 评分卡，logic 维度保持 1.0（不做臆测）。
+#   cross_check L3 双路检索比对。**尚未实现**：设为 true 会抛
+#               VerifierConfigError —— 不能让一个没实现的层被配置"打开"
+#               然后静默忽略，那等于对外宣称了做不到的能力。
+layers:
+  rules: true
+  llm_judge: true
+  cross_check: false   # L3 未实现；实现前必须保持 false
 
 # scorecard：评分维度与权重（合计必须为 1.0）
 scorecard:
