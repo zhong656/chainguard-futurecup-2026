@@ -23,6 +23,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SOURCES = ROOT / "knowledge" / "sources.yaml"
 DEFAULT_CORPUS = ROOT / "knowledge" / "corpus"
+_PAGINATED_SUFFIXES = {".pdf", ".docx"}
 DEFAULT_INDEX = ROOT / "knowledge" / "source_index.json"
 
 RRF_K = 60
@@ -43,6 +44,9 @@ class Chunk:
     end: int
     text: str
     hash: str
+    # 物理页码：仅 PDF 等有分页的格式才有值；Markdown/纯文本为 None。
+    # 证据链的 source_ref.page 直接用它——不要给纯文本编一个假页码。
+    page: int | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -113,6 +117,11 @@ def build_index(
             f = ROOT / "knowledge" / rel
         if not f.exists():
             continue
+        # 分页格式（PDF/DOCX）走解析层：只有解析出的页才有真实页码；
+        # Markdown/纯文本继续按原文字符切片，char_range 仍指向文件本身。
+        if f.suffix.lower() in _PAGINATED_SUFFIXES:
+            chunks.extend(_chunk_paginated(f, src, rel, source_id))
+            continue
         text = f.read_text(encoding="utf-8")
         # 语料卡的「三、权利依据 / 四、禁止做的事 / 五、引用写法」是合规声明，
         # 与检索无关，还会让"版权/署名"类查询命中样板段。按原文字符位置跳过。
@@ -134,6 +143,34 @@ def build_index(
                 )
             )
     return chunks
+
+
+def _chunk_paginated(path: Path, src: dict, rel: str, source_id: str) -> list[Chunk]:
+    """解析分页文档（PDF/DOCX），按页切片并带上真实页码。
+
+    char_range 是**页内**偏移（每页各自从 0 起），配合 page 才能定位原文；
+    纯文本那种「相对整文件」的偏移在这里不适用——两种语义写进字段注释。
+    """
+    from src.tools import parse  # 延迟导入：纯文本路径不该依赖解析层
+
+    doc = parse.parse_document(path)
+    out: list[Chunk] = []
+    for page in doc.pages:
+        for start, end in _split_paragraphs(page.text):
+            piece = page.text[start:end]
+            out.append(
+                Chunk(
+                    source_id=source_id,
+                    doc_id=str(src.get("doc_id") or ""),
+                    path=rel,
+                    start=start,
+                    end=end,
+                    text=piece,
+                    hash=hashlib.sha256(piece.encode("utf-8")).hexdigest()[:16],
+                    page=None if page.synthetic else page.no,
+                )
+            )
+    return out
 
 
 def save_index(chunks: list[Chunk], path: Path = DEFAULT_INDEX) -> Path:
