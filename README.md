@@ -3,7 +3,7 @@
 > 面向复杂任务的**多智能体编排、调度、执行与可核验交付**平台
 > 2026 第五届「未来杯」创新大赛 · 赛道一 · Agent 编排创新应用
 
-<!-- 控制台截图 / DAG 流转 GIF 待阶段 4 补入 -->
+<!-- 控制台截图 / DAG 流转 GIF：待接入真实 SSE 后补入（见 Issue #43） -->
 
 ## 1. 项目定位
 
@@ -34,21 +34,47 @@ ChainGuard 不是"又一个聊天机器人"，而是一套 **Agent Harness（智
 
 ## 3. 5 分钟复现指南
 
-> ⚠️ **当前仓库为阶段 0 骨架**：`docker-compose.yml` 与业务代码将在**阶段 4.3（11/17）**落地。
-> 下面是既定的目标流程，**现在执行还跑不起来**，请勿据此判断项目完成度。
+> ✅ **当前状态：可运行**。`python scripts/check.py` 全绿（251 项检查），
+> 命令行纵切与 HTTP 服务均可直接跑通，**Mock 模式不需要任何 API Key**。
+> 逐项能力与证据的对应关系见 `docs/HANDOFF.md` 顶部状态表。
 
-当前可运行的命令行纵切（使用离线占位语料，无需 API Key）：
+### 方式一：命令行纵切（最快，30 秒）
 
 ```bash
 python -m src.run --request "用机器视觉升级精密零件产线质检"
 ```
 
-命令会运行检索、Mock 草稿、L1 规则评分和一次缺引用定向修订，并将
-`solution.md`、`evidence_chain.json`、`scorecard.json`、`trace.jsonl`
-及可校验的 `delivery_artifact.json` 写入 `outputs/_vertical/`。
-这些占位语料不构成正式方案的事实依据。
+会依次执行：混合检索（17 份语料）→ Mock 草稿 → **L1 规则 + L2 独立评审**评分 →
+若未达阈值则**定位到段落**定向回退重跑 `write → verify` → 导出交付包。
 
-目标形态（交付后预期）：
+产物落在 `outputs/_vertical/`，共 8 件：
+
+```
+solution.md            正文
+evidence_chain.json    引用到的 source_id 清单
+evidence_refs.json     每条引用的 文件 / 页码 / 字符区间 / 原文 / 哈希（可回原文核对）
+scorecard.json         评分卡（含 fail→pass 的终轮结论）
+rounds.json            每轮评分，首轮 fail、终轮 pass 的物证
+charts/*.svg           评分卡五维 + Self-Loop 收敛曲线
+trace.jsonl            全链路事件（start/end/revise/fail/retry/degrade）
+delivery_artifact.json 交付清单与上述文件的 sha256
+```
+
+### 方式二：HTTP 服务
+
+```bash
+docker compose up -d          # 或本地 uvicorn src.main:app --port 8000
+# POST /runs → GET /runs/{id}/events（SSE）→ GET /runs/{id}/artifacts
+```
+
+### 方式三：一键跑全部检查
+
+```bash
+python scripts/check.py       # 契约 / 配置 / 单测 / 端到端 / 纵切，共 5 步
+python scripts/verify_http.py # 起真实 uvicorn，打三个接口
+```
+
+> 复现命令与 CI 完全一致：CI 跑的就是 `make check`，没有第二套脚本。
 
 ```bash
 # 1) 克隆
@@ -85,7 +111,7 @@ chainguard-futurecup-2026/
 │   ├── scheduler.yaml           # 并发 / 预算 / 超时 / 重试
 │   └── verifier.yaml            # 评分卡权重与阈值
 ├── knowledge/                   # 知识源声明与离线语料
-│   ├── sources.yaml             # （阶段 1 落地）
+│   ├── sources.yaml             # 17 份知识源声明（含许可依据）
 │   └── corpus/                  # 离线语料包
 ├── agents/                      # 6 类 Agent 角色定义
 │   ├── planner.yaml
@@ -96,7 +122,7 @@ chainguard-futurecup-2026/
 │   └── reviewer.yaml
 ├── workflows/                   # 工作流模板
 │   └── industry_solution.yaml   # 主示范工作流
-├── src/                         # 后端实现（阶段 2 落地）
+├── src/                         # 后端实现（15 个模块，均已落地）
 ├── tests/                       # 单测 / 黄金用例 / 故障注入
 ├── docs/                        # 提交材料清单、逐日计划、架构文档
 └── .github/                     # PR 与 Issue 模板
