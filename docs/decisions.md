@@ -10,7 +10,7 @@
   ---   ---   ---   ---   ---  
   11-05   **生成物永不入库**：`docs/consistency-report.md` 移出版本库，CI 生成 artifact   B（全权处理）   所有 PR   `.gitignore` + CI `Guard generated files` 步骤  
   11-05   **`docs/CHANGELOG-contracts.md` 只在 main 上追加**，分支禁止修改   B   所有契约 PR   PR 模板 + 复核  
-  11-05   **一人一天一个 PR**，分支活不过 24 小时   B   全员   看板 / 站会  
+  11-05   **一人一天一个 PR**，分支活不过 24 小时（**11-07 20:12 取消限流**，保留「分支活不过 24 小时」）   B   全员   看板 / 站会  
   11-05   **合并窗口 12:00 / 22:00**，其余时间只提不合   B   全员   看板  
   11-05   **每天 22:00 打 tag `snapshot/YYYYMMDD`**   B   回滚能力   `git tag -l`  
   11-05   **一个 clone 只跑一个 agent**   B   全员   事故复盘（11-04 陌生文件）  

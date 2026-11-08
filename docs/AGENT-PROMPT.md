@@ -73,7 +73,8 @@
 
 ```
 你是 C，负责 Agent 与验证。可改文件：
-  src/agent_registry.py、src/verifier.py、src/rule_checker.py
+  src/agent_registry.py、src/verifier.py、src/rule_checker.py、src/feedback.py
+  tests/test_rule_checker.py、tests/test_agent_registry.py、tests/test_verifier.py、tests/test_feedback.py
   agents/*.yaml、configs/verifier.yaml
 你持有契约：agent_spec、scorecard、compile_error。
 
