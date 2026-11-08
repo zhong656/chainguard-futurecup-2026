@@ -89,13 +89,20 @@ def export_delivery(result: dict, directory: Path) -> dict:
     pool = EvidencePool(result["chunks"])
     pool.add_from_retrieval({"items": [{"source_id": sid} for sid in cited]})
     evidence_chain = pool.to_chain()
+    refs: list[dict] = []
     for source_ref in pool.resolve_chain():
         validator("source_ref.schema.json").validate(source_ref)
+        refs.append(source_ref)
 
     directory.mkdir(parents=True, exist_ok=True)
     (directory / "solution.md").write_text(_render_solution(draft), encoding="utf-8")
     (directory / "evidence_chain.json").write_text(
         json.dumps(evidence_chain, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    # evidence_chain 只有 id；真正"引了哪一段原文"在这里：
+    # 每条含 file_path / page / char_range / text / hash，可据此回到原文核对。
+    (directory / "evidence_refs.json").write_text(
+        json.dumps(refs, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     (directory / "scorecard.json").write_text(
         json.dumps(result["scorecard"], ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -105,7 +112,8 @@ def export_delivery(result: dict, directory: Path) -> dict:
         json.dumps(result.get("rounds", []), ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
     chart_paths = _render_charts(result, directory)
-    names = ("solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl", "rounds.json")
+    names = ("solution.md", "evidence_chain.json", "evidence_refs.json",
+             "scorecard.json", "trace.jsonl", "rounds.json")
     files = []
     for name in names:
         payload = (directory / name).read_bytes()

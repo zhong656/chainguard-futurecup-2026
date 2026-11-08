@@ -98,7 +98,9 @@ class EvidencePool:
             "source_id": chunk.source_id,
             "doc_id": _doc_id(chunk.source_id),
             "file_path": chunk.path,
-            "page": None,
+            # 解析层能给出真实页码时才有值；纯文本/转述卡保持 None，
+            # 不要为了"看起来完整"编一个页码——评审按页码翻原文时会对不上。
+            "page": getattr(chunk, "page", None),
             "row": None,
             "char_range": [chunk.start, chunk.end],
             "text": text,
