@@ -26,10 +26,17 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
-import httpx  # noqa: E402
-import uvicorn  # noqa: E402
-
-from src.main import app  # noqa: E402
+try:  # 缺依赖时给可执行的安装提示，而不是裸 ModuleNotFoundError
+    import httpx  # noqa: E402
+    import uvicorn  # noqa: E402
+    from src.main import app  # noqa: E402
+except ImportError as exc:  # pragma: no cover
+    missing = getattr(exc, "name", None) or str(exc)
+    raise SystemExit(
+        f"[FAIL] 缺少依赖 {missing}：本脚本需要 fastapi + httpx + uvicorn。\n"
+        "       安装：python -m pip install fastapi httpx uvicorn\n"
+        "       （Mock 模式不需要任何 API Key，但这三个包必须装）"
+    ) from exc
 
 
 class _Server(uvicorn.Server):
