@@ -34,8 +34,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 
 # 只收这些顶层目录/文件：白名单比黑名单安全（新增文件不会意外漏收或被误收）
-INCLUDE_DIRS = ("src", "scripts", "tests", "contracts", "configs", "workflows",
-                "agents", "knowledge", "web", "docs")
+INCLUDE_DIRS = ("src", "scripts", "tests", "cases", "contracts", "configs",
+                "workflows", "agents", "knowledge", "web", "docs")
 INCLUDE_FILES = ("README.md", "requirements.txt", "Dockerfile", "docker-compose.yml",
                  ".dockerignore", ".gitignore", "Makefile", "SECURITY.md", "CONTRIBUTING.md")
 
