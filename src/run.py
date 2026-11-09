@@ -26,7 +26,7 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         print(f"[FAIL] 纵切未完成：{exc}", file=sys.stderr)
         return 1
-    print(f"[PASS] Mock 纵切完成；修订轮次={result['round']}；评分={result['scorecard']['score']:.3f}")
+    print(f"[PASS] {result['llm_response']['provider']} 纵切完成；修订轮次={result['round']}；评分={result['scorecard']['score']:.3f}")
     print(f"交付包：{args.output.resolve() / 'delivery_artifact.json'}")
     return 0
 

@@ -13,6 +13,7 @@
 from __future__ import annotations
 
 import ast
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -24,7 +25,7 @@ PY = sys.executable
 def run(title: str, cmd: list[str]) -> bool:
     print(f"\n=== {title} ===")
     print("$ " + " ".join(cmd))
-    proc = subprocess.run(cmd, cwd=ROOT)  # noqa: S603
+    proc = subprocess.run(cmd, cwd=ROOT, env={**os.environ, "LLM_PROVIDER": "mock"})  # noqa: S603
     if proc.returncode != 0:
         print(f"[FAIL] {title} 失败（exit {proc.returncode}）")
         return False

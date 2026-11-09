@@ -78,6 +78,16 @@ python scripts/verify_http.py # 起真实 uvicorn，打三个接口
 
 > 复现命令与 CI 完全一致：CI 跑的就是 `make check`，没有第二套脚本。
 
+### 切换模型档位
+
+默认 `mock` 完全离线。真实档位可通过环境变量选 `deepseek`、`qwen` 或 `ollama`；
+模型名在 `configs/llm.yaml` 的对应档位配置，需与账户或本机已安装模型一致。
+DeepSeek 和 Qwen 还需设置 `LLM_API_KEY`，Ollama 需先启动本地服务。
+需要自定义兼容端点时设置 `LLM_BASE_URL`，例如容器访问宿主机 Ollama 时使用
+`http://host.docker.internal:11434/v1`。运行 `python -m src.run` 或 `docker compose up -d`
+即可按所选档位执行；限流、超时和服务端错误会按配置降级到 Mock，并在模型响应中标记
+`degraded=true`。401 等配置错误直接失败，不会伪装成成功。
+
 ```bash
 # 1) 克隆
 git clone https://github.com/zhong656/chainguard-futurecup-2026.git
