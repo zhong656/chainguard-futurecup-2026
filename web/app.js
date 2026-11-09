@@ -39,6 +39,10 @@ function showFrame(count) {
   $("seek").value = count;
   $("count").textContent = `${count} / ${events.length}`;
   $("round").textContent = `${events[count-1]?.round ?? 0} / 3`;
+  const currentRound = events[count-1]?.round ?? 0;
+  $("round-select").value = String(currentRound);
+  const rerun = visible.filter(item => item.kind === "start" && item.round === currentRound).map(item => item.node_id);
+  $("round-path").textContent = `R${currentRound} 实际执行节点：${rerun.join(" → ") || "尚无 start 事件"}`;
   const visibleIds = new Set(visible.map(item => item.event_id));
   const reviews = history.filter(item => visibleIds.has(item.event_id));
   $("reviews").replaceChildren();
@@ -48,7 +52,7 @@ function showFrame(count) {
     const title = document.createElement("strong");
     title.textContent = `第 ${item.round} 轮 · ${card.verdict} · ${card.score.toFixed(3)} / ${card.threshold}`;
     const body = document.createElement("pre");
-    body.textContent = card.issues.map(issue => `${issue.severity} · ${issue.rule_id || "规则"} · ${issue.section}\n${issue.reason}\n定向目标：${issue.target_node}；${issue.suggestion}`).join("\n\n") || "L1 检查通过；无未解决 issue。";
+    body.textContent = card.issues.map(issue => `${issue.severity} · ${issue.rule_id || "规则"} · ${issue.section}\n${issue.reason}\n定向目标：${issue.target_node}；${issue.suggestion}`).join("\n\n") || "本轮验证通过；无未解决 issue。";
     box.append(title,body); $("reviews").appendChild(box);
   }
   const latest = reviews.at(-1);
@@ -61,7 +65,9 @@ function showFrame(count) {
   });
   if (latest) {
     $("score").textContent = `${latest.scorecard.score.toFixed(3)} / ${latest.scorecard.threshold}`;
-    $("preview").textContent = latest.draft.sections.map(s => `## ${s.title}\n${s.content}\n引用：${s.citations?.join(", ") || "（缺失）"}`).join("\n\n");
+    $("preview").textContent = latest.draft ? latest.draft.sections.map(s => `## ${s.title}\n${s.content}\n引用：${s.citations?.join(", ") || "（缺失）"}`).join("\n\n") :
+      latest.round === lastResult?.scorecard.round ? lastResult.results.write.text :
+      "本轮历史草稿未由 API 导出；上方按 rounds.json 显示实际问题段落与修订目标。";
   } else {
     $("score").textContent = "— / 0.85";
     $("preview").textContent = "当前进度没有草稿快照；Trace 仅保存摘要。";
@@ -83,9 +89,17 @@ function renderTimeline() {
   }
   $("timeline").scrollTop = $("timeline").scrollHeight;
   $("seek").max = events.length;
+  const selected = $("round-select").value;
+  $("round-select").replaceChildren();
+  for (const round of [...new Set(events.map(item => item.round ?? 0))]) {
+    const option = document.createElement("option"); option.value = round;
+    option.textContent = round === 0 ? "R0 初稿" : `R${round} 第 ${round} 轮修订`;
+    $("round-select").appendChild(option);
+  }
+  $("round-select").value = selected;
 }
 function reset() {
-  clearInterval(timer); events = []; history = []; lastResult = null; $("timeline").replaceChildren();
+  $("evidence").disabled = true; clearInterval(timer); events = []; history = []; lastResult = null; $("timeline").replaceChildren();
   $("downloads").replaceChildren(); $("preview").textContent = "等待运行结果…";
   $("result-note").textContent = "Trace 为只读事件；评分历史仅来自本次纵切的独立快照。";
   $("score").textContent = "— / 0.85"; $("seek").max = 0; $("replay").disabled = true;
@@ -94,12 +108,20 @@ function reset() {
 function showResult(result) {
   lastResult = result;
   $("status").textContent = result.passed ? "通过" : "已终止";
-  $("score").textContent = `${result.scorecard.score.toFixed(3)} / 0.85`;
+  $("score").textContent = `${result.scorecard.score.toFixed(3)} / ${result.scorecard.threshold}`;
   $("message").textContent = result.reason;
   $("result-note").textContent = `${result.engine} · ${result.run_id}。${result.passed ? "最终评分通过；历史轮次见回放" : "未通过，不得作为成功交付"}。`;
   $("preview").textContent = result.results.write?.text || "该节点未产出草稿。";
   if (result.history) { history = result.history; showFrame(events.length); }
   $("downloads").replaceChildren();
+  if (result.api_files) {
+    for (const file of result.api_files) {
+      const link = document.createElement("a"); link.textContent = file;
+      link.href = apiFile(result.run_id,file); link.target = "_blank"; link.rel = "noopener";
+      $("downloads").appendChild(link);
+    }
+    $("evidence").disabled = false;
+  }
   for (const name of result.download_id ? ["solution.md","evidence_chain.json","scorecard.json","trace.jsonl","delivery_artifact.json","review_history.json"] : []) {
     const link = document.createElement("a"); link.textContent = name;
     link.href = `/download?run=${encodeURIComponent(result.download_id)}&file=${encodeURIComponent(name)}`;
@@ -136,7 +158,7 @@ async function stream(response) {
   } finally { await reader.cancel().catch(() => {}); }
 }
 async function runApi(request) {
-  const base = $("api-base").value.trim().replace(/\/$/, "");
+  const base = ""; // 通过本机控制台的同源转发消费 A 的实际 API。
   const started = await fetch(base+"/runs", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({request})});
   if (!started.ok) throw new Error(`POST /runs 失败（${started.status}）`);
   const {run_id} = await started.json();
@@ -145,9 +167,19 @@ async function runApi(request) {
   const response = await fetch(`${base}/runs/${encodeURIComponent(run_id)}/artifacts`);
   if (!response.ok) throw new Error(`交付物读取失败（${response.status}）`);
   const artifact = await response.json();
-  if (artifact.scorecard) showResult({passed:artifact.scorecard.verdict === "pass",scorecard:artifact.scorecard,
-    reason:"API 返回的实际评分卡；未收到历史评分快照时仅展示最终结果。",engine:"A API",run_id,
-    results:{write:{text:JSON.stringify(artifact,null,2)}}});
+  if (artifact.scorecard) {
+    if (!TraceView.sameEvents(events,artifact.trace_bundle)) throw new Error("API SSE 与交付包 Trace 不一致，停止展示成功结果。");
+    let rounds = [], solution = "历史正文暂不可读。";
+    const extras = await Promise.all([fetch(apiFile(run_id,"rounds.json")),fetch(apiFile(run_id,"solution.md"))]);
+    if (extras[0].ok) rounds = await extras[0].json();
+    if (extras[1].ok) solution = await extras[1].text();
+    const snapshots = rounds.map(card => ({event_id:events.find(e => e.node_id === "verify" && e.kind === "end" && e.round === card.round)?.event_id,
+      round:card.round,scorecard:{...card,threshold:artifact.scorecard.threshold},draft:null})).filter(item => item.event_id);
+    showResult({passed:artifact.scorecard.verdict === "pass",scorecard:artifact.scorecard,history:snapshots,
+      reason:`实际 API 完成；${events.length} 条 SSE 事件与交付包 Trace 逐条一致。`,engine:"真实 HTTP API · Mock LLM · L1/L2",run_id,
+      api_files:[...artifact.manifest.files.map(item => item.path),"delivery_artifact.json"],
+      results:{write:{text:solution}}});
+  }
   else { $("status").textContent = "事件流结束"; $("preview").textContent = JSON.stringify(artifact,null,2); }
   $("replay").disabled = !events.length;
 }
@@ -162,7 +194,18 @@ $("run").onclick = async () => {
   } catch (error) { $("message").textContent = error.message; $("status").textContent = "运行失败"; }
   finally { busy(false); }
 };
-function busy(value) { for (const id of ["run","import","load-demo","replay","mode","api-base"]) $(id).disabled = value; $("seek").disabled = value; $("replay").disabled = value || !events.length; }
+function apiFile(run, file) { return `/api/files/${encodeURIComponent(run)}/${file.split("/").map(encodeURIComponent).join("/")}`; }
+function busy(value) { for (const id of ["run","import","load-demo","replay","mode","round-select","step","pause"]) $(id).disabled = value; $("seek").disabled = value; $("replay").disabled = value || !events.length; }
+$("pause").onclick = () => { clearInterval(timer); $("status").textContent = "回放已暂停"; };
+$("step").onclick = () => { clearInterval(timer); showFrame(Math.min(events.length,Number($("seek").value)+1)); };
+$("round-select").onchange = () => { clearInterval(timer); showFrame(events.findIndex(item => (item.round ?? 0) === Number($("round-select").value))+1); };
+$("evidence").onclick = async () => {
+  try {
+    const response = await fetch(apiFile(lastResult.run_id,"evidence_refs.json"));
+    if (!response.ok) throw new Error("证据文件暂不可读。");
+    $("preview").textContent = JSON.stringify(await response.json(),null,2);
+  } catch (error) { $("message").textContent = error.message; }
+};
 $("seek").oninput = () => { clearInterval(timer); showFrame(Number($("seek").value)); };
 $("replay").onclick = () => {
   clearInterval(timer); let index = 0; showFrame(0); $("status").textContent = "重放中";
@@ -193,7 +236,6 @@ $("load-demo").onclick = async () => {
     $("status").textContent = "CLI Trace 已载入"; $("message").textContent = "按时间戳只读回放；不推断缺失评分或草稿。";
   } catch (error) { $("message").textContent = error.message; }
 };
-$("mode").onchange = () => { $("api-base").hidden = $("mode").value !== "api"; };
 $("run").disabled = true;
-fetch("/api/workflow").then(response => response.json()).then(data => { workflow = data; drawGraph(); $("run").disabled = false; })
+fetch("/api/workflow").then(response => response.json()).then(data => { workflow = data; $("workflow-source").textContent = data.source || ""; drawGraph(); $("run").disabled = false; })
   .catch(() => { $("message").textContent = "工作流读取失败，请确认本机演示服务已启动。"; $("run").disabled = true; });

@@ -6,6 +6,10 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Thread
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError
+import socket
+import sys
+import time
 
 import pytest
 
@@ -112,3 +116,75 @@ def test_replay_order_and_all_event_states_match_browser():
                             capture_output=True, check=True, cwd=root)
     browser = json.loads(result.stdout)
     assert browser == {"events":events,"nodes":expected}
+
+
+@pytest.fixture
+def api_console():
+    pytest.importorskip("uvicorn")
+    pytest.importorskip("fastapi")
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1",0))
+        port = sock.getsockname()[1]
+    process = subprocess.Popen([sys.executable,"-m","uvicorn","src.main:app","--host","127.0.0.1",
+                                "--port",str(port),"--no-access-log"], stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL,
+                               cwd=Path(__file__).resolve().parents[1])
+    service = demo_server.ThreadingHTTPServer(("127.0.0.1",0),demo_server.Handler)
+    service.api_base = f"http://127.0.0.1:{port}"
+    thread = Thread(target=service.serve_forever,daemon=True)
+    thread.start()
+    try:
+        for _ in range(200):
+            if process.poll() is not None:
+                pytest.fail("实际 uvicorn API 启动失败")
+            try:
+                urlopen(service.api_base+"/openapi.json",timeout=.1).close()
+                break
+            except OSError:
+                time.sleep(.05)
+        else:
+            pytest.fail("实际 uvicorn API 启动超时")
+        yield f"http://127.0.0.1:{service.server_port}"
+    finally:
+        service.shutdown(); service.server_close(); thread.join()
+        process.terminate(); process.wait(timeout=10)
+
+
+def test_actual_http_api_trace_matches_files_and_rounds(api_console):
+    request = Request(api_console+"/runs",data=json.dumps({"request":"机器视觉质检"}).encode(),headers={"Content-Type":"application/json"})
+    with urlopen(request,timeout=20) as response:
+        run = json.load(response)["run_id"]
+    with urlopen(f"{api_console}/runs/{run}/events",timeout=30) as response:
+        events = [json.loads(line[6:]) for line in response.read().decode().splitlines() if line.startswith("data: ")]
+    with urlopen(f"{api_console}/runs/{run}/artifacts") as response:
+        artifact = json.load(response)
+    with urlopen(f"{api_console}/api/files/{run}/trace.jsonl") as response:
+        stored = [json.loads(line) for line in response.read().decode().splitlines()]
+    with urlopen(f"{api_console}/api/files/{run}/rounds.json") as response:
+        rounds = json.load(response)
+    assert events == stored == artifact["trace_bundle"]
+    assert [card["verdict"] for card in rounds] == ["fail","pass"]
+    assert all(item["run_id"] == run for item in events)
+    for name in ["solution.md","evidence_refs.json","charts/convergence.svg"]:
+        with urlopen(f"{api_console}/api/files/{run}/{name}") as response:
+            assert response.read()
+    with pytest.raises(HTTPError):
+        urlopen(f"{api_console}/api/files/{run}/../.git/config")
+    target = demo_server.ROOT / "outputs/api" / run / "solution.md"
+    original = target.read_bytes()
+    try:
+        target.write_bytes(original + b"\ntampered")
+        with pytest.raises(HTTPError) as error:
+            urlopen(f"{api_console}/api/files/{run}/solution.md")
+        assert error.value.code == 409
+    finally:
+        target.write_bytes(original)
+
+
+def test_third_round_trace_is_real_gradual_repair(tmp_path):
+    from web.capture_round3 import capture
+    result = capture(tmp_path)
+    assert [r["verdict"] for r in result["rounds"]] == ["fail","fail","fail","pass"]
+    events = read_trace(tmp_path/"trace.jsonl")
+    starts = [e["node_id"] for e in events if e["round"] == 3 and e["kind"] == "start"]
+    assert starts == ["write","verify","gate","review","snap"]
+    assert events == result["events"]

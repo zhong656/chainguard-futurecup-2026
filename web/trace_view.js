@@ -28,6 +28,10 @@
     for (const item of items) if (states[item.kind]) nodes[item.node_id] = states[item.kind];
     return nodes;
   }
-  root.TraceView = {ordered,reduce};
+  function sameEvents(a,b) {
+    const canonical = items => JSON.stringify(ordered(items).map(item => Object.fromEntries(Object.keys(item).sort().map(key => [key,item[key]]))));
+    return canonical(a) === canonical(b);
+  }
+  root.TraceView = {ordered,reduce,sameEvents};
   if (typeof module !== "undefined") module.exports = root.TraceView;
 })(globalThis);

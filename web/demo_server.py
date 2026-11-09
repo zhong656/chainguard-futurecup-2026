@@ -1,12 +1,11 @@
-"""D 的本机纵切控制台：python -m web.demo_server，默认仅监听 127.0.0.1:8765。
-
-生产 API/FastAPI 由 A 接入；此服务用于无 Key 的可视化验收与 SSE 演示。
-"""
+"""D 的控制台与 A API 同源代理，默认仅监听 127.0.0.1:8765。"""
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+from http.client import HTTPConnection, HTTPSConnection
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import Lock
@@ -19,7 +18,7 @@ from web.local_runtime import run_local
 from web.mock_runtime import run_demo
 
 WEB = Path(__file__).parent
-FILES = {"solution.md", "scorecard.json", "evidence_chain.json", "trace.jsonl", "delivery_artifact.json", "review_history.json"}
+FILES = {"solution.md", "scorecard.json", "evidence_chain.json", "evidence_refs.json", "trace.jsonl", "rounds.json", "delivery_artifact.json", "review_history.json", "charts/scorecard.svg", "charts/convergence.svg"}
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -28,9 +27,32 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if re.fullmatch(r"/runs/[a-f0-9]{32}/(?:events|artifacts)", parsed.path):
+            return self.proxy_api()
+        match = re.fullmatch(r"/api/files/([a-f0-9]{32})/(.+)", parsed.path)
+        if match:
+            run_id, name = match.groups()
+            if name not in FILES - {"review_history.json"}:
+                return self.send_error(400)
+            folder = ROOT / "outputs/api" / run_id
+            target = folder / name
+            if not target.is_file():
+                return self.send_error(404)
+            content = target.read_bytes()
+            if name != "delivery_artifact.json":
+                try:
+                    manifest = json.loads((folder / "delivery_artifact.json").read_text(encoding="utf-8"))["manifest"]
+                    entry = next((item for item in manifest["files"] if item["path"] == name), None)
+                except (OSError, ValueError, KeyError, TypeError):
+                    return self.send_error(409, "Artifact manifest unavailable")
+                if not entry or entry["sha256"] != hashlib.sha256(content).hexdigest() or entry["bytes"] != len(content):
+                    return self.send_error(409, "Artifact digest mismatch")
+            mime = "image/svg+xml" if name.endswith(".svg") else "text/plain" if name.endswith((".md", ".jsonl")) else "application/json"
+            return self.send_data(content, mime)
         if parsed.path == "/api/workflow":
             graph = compile_workflow(ROOT / "workflows/industry_solution.yaml")
-            return self.send_data(json.dumps({"nodes": list(graph.nodes.values()), "loop": graph.loop}).encode(), "application/json")
+            return self.send_data(json.dumps({"nodes": list(graph.nodes.values()), "loop": graph.loop,
+                "source": (ROOT / "workflows/industry_solution.yaml").read_text(encoding="utf-8")}).encode(), "application/json")
         if parsed.path == "/api/replay/demo":
             target = ROOT / "outputs/demo/trace.jsonl"
             if not target.is_file():
@@ -62,6 +84,11 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
     def do_POST(self):
+        if self.path == "/runs":
+            origin = self.headers.get("Origin")
+            if origin and urlparse(origin).netloc != self.headers.get("Host"):
+                return self.send_error(403)
+            return self.proxy_api()
         if self.path not in {"/api/run", "/api/run-real"} or self.headers.get_content_type() != "application/json":
             return self.send_error(400)
         origin = self.headers.get("Origin")
@@ -106,10 +133,42 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as exc:
             send("error", {"message": str(exc)})
 
+    def proxy_api(self):
+        """固定上游的同源转发；逐块传递 A 的实际 SSE，不执行本地运行时。"""
+        base = urlparse(getattr(self.server, "api_base", "http://127.0.0.1:8000"))
+        connection = (HTTPSConnection if base.scheme == "https" else HTTPConnection)(base.hostname, base.port, timeout=180)
+        sent = False
+        try:
+            length = int(self.headers.get("Content-Length", 0))
+            if not 0 <= length <= 20000:
+                return self.send_error(400)
+            body = self.rfile.read(length) if self.command == "POST" else None
+            connection.request(self.command, self.path, body=body,
+                               headers={"Content-Type":"application/json", "Accept":"text/event-stream, application/json"})
+            response = connection.getresponse()
+            sent = True
+            self.send_response(response.status)
+            self.send_header("Content-Type", response.getheader("Content-Type", "application/json"))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            while chunk := response.read1(65536):
+                self.wfile.write(chunk)
+                self.wfile.flush()
+        except (OSError, ValueError):
+            if not sent:
+                self.send_error(502, "Start the API: python -m uvicorn src.main:app")
+            self.close_connection = True
+        finally:
+            connection.close()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--api-base", default="http://127.0.0.1:8000")
     args = parser.parse_args()
     print(f"ChainGuard D 本机纵切控制台：http://127.0.0.1:{args.port}")
-    ThreadingHTTPServer(("127.0.0.1", args.port), Handler).serve_forever()
+    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    server.api_base = args.api_base
+    server.serve_forever()
