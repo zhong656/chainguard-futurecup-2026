@@ -17,11 +17,11 @@
 
 | 项 | 值 |
 | --- | --- |
-| `main` | **合并前基线 `3210c56`**（2026-11-09 02:45）；**实时值以 `git rev-parse origin/main` 为准** |
-| 文件数 / 测试 | 160 个文件，**256 个测试通过**（2 skipped）；本机/CI 装了 fastapi+httpx 时为 256，未装时 246 passed + 4 skipped（API 用例会跳过） |
+| `main` | **合并前基线 `19e4b32`**（2026-11-09 20:20）；**实时值以 `git rev-parse origin/main` 为准** |
+| 文件数 / 测试 | **177 个文件**（= 打包白名单数，两个口径已对齐）；**297 个测试通过**（2 skipped）——**装全依赖时**；只装 pyyaml/jsonschema/pytest 时 API 与 langgraph/pymupdf 相关用例会 skip（C 环境实测 291 passed / 5 skipped）。**报数必须注明环境** |
 | `make check` | **PASS**（9 项检查，**0 条 WARN**） |
 | 打开中的 PR | **0**（#63/#64 已合；实时值用 `gh pr list --state open` 查） |
-| 纵切 | **已跑通**：`python -m src.run` → 7 件交付物（含 rounds.json 与 2 张 SVG） |
+| 纵切 | **已跑通**：`python -m src.run` → **9 件产物**（solution / evidence_chain / evidence_refs / scorecard / rounds / trace / 2 张 SVG / delivery_artifact）；示例输出包另附包内 README，共 10 项 |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
 | 剩余 | ① **#43 控制台阶段二 + 演示视频**（D，11/18）；② **项目文档按模板重整 + 8 张截图**（全员，11/19）；③ **官方模板未拿到**（A，计划 11/3 那条仍未勾）；④ PPT 制作（D）；⑤ 11/19 用当时 main 重新生成示例输出包与源码包 |

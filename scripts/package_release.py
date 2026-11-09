@@ -34,8 +34,10 @@ ROOT = Path(__file__).resolve().parents[1]
 DIST = ROOT / "dist"
 
 # 只收这些顶层目录/文件：白名单比黑名单安全（新增文件不会意外漏收或被误收）
+# `.github` 也收：CI 配置与 PR/Issue 模板是"工程纪律"的直接证据，
+# 评审能看到门禁怎么配的；里面不含任何密钥。
 INCLUDE_DIRS = ("src", "scripts", "tests", "cases", "contracts", "configs",
-                "workflows", "agents", "knowledge", "web", "docs")
+                "workflows", "agents", "knowledge", "web", "docs", ".github")
 INCLUDE_FILES = ("README.md", "requirements.txt", "Dockerfile", "docker-compose.yml",
                  ".dockerignore", ".gitignore", "Makefile", "SECURITY.md", "CONTRIBUTING.md")
 
@@ -54,12 +56,29 @@ EXCLUDE_UNDER_SUFFIXES = {".pdf"}
 SIZE_LIMIT_MB = 500  # 赛事规定：单个压缩包 ≤ 500MB，且只有一次上传机会
 
 
-def _git(*args: str) -> str:
-    proc = subprocess.run(
-        ["git", *args], cwd=ROOT, capture_output=True, check=True,
-        encoding="utf-8", errors="replace",
-    )
-    return proc.stdout.strip()
+def _git(*args: str, default: str = "") -> str:
+    """git 是**可选**的：评审拿到的是解压包，里面没有 .git。
+
+    失败时返回 default 而不是抛异常——打包脚本本身不该因为"不是 git 仓库"而崩。
+    """
+    try:
+        proc = subprocess.run(
+            ["git", *args], cwd=ROOT, check=False,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            encoding="utf-8", errors="replace",
+        )
+    except OSError:
+        return default
+    return proc.stdout.strip() if proc.returncode == 0 else default
+
+
+def _commit_id() -> str:
+    """提交号：优先 GIT_COMMIT 环境变量（容器/无 .git 场景），其次 git，最后 unknown。"""
+    import os
+
+    if os.environ.get("GIT_COMMIT"):
+        return os.environ["GIT_COMMIT"]
+    return _git("rev-parse", "HEAD", default="unknown")
 
 
 def _sha256(path: Path) -> str:
@@ -98,8 +117,8 @@ def build_zip(files: list[Path], target: Path) -> Path:
         for path in files:
             zf.write(path, arcname=path.relative_to(ROOT).as_posix())
         manifest = [
-            f"commit: {_git('rev-parse', 'HEAD')}",
-            f"branch: {_git('rev-parse', '--abbrev-ref', 'HEAD')}",
+            f"commit: {_commit_id()}",
+            f"branch: {_git('rev-parse', '--abbrev-ref', 'HEAD', default='unknown')}",
             f"packed_at: {datetime.now(timezone.utc).isoformat()}",
             f"files: {len(files)}",
             "",
