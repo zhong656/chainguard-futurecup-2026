@@ -17,7 +17,7 @@ from scripts._schema import validator
 from src.dag_compiler import compile_workflow
 from src.evidence import EvidencePool
 from src.knowledge_hub import DEFAULT_CORPUS, DEFAULT_SOURCES, build_index, load_sources, retrieve
-from src.llm_adapter import MockLLMAdapter, parse_draft
+from src.llm_adapter import create_adapter, parse_draft
 from src.loop_controller import LoopController
 from src.scheduler import Scheduler
 from src.verifier import default_verifier
@@ -30,8 +30,9 @@ class VerticalSliceError(RuntimeError):
     """纵切未形成可交付结果。"""
 
 
-def _render_solution(draft: dict) -> str:
-    lines = ["# 产业技术方案（Mock 离线演示，非正式交付）", ""]
+def _render_solution(draft: dict, *, mock: bool) -> str:
+    title = "# 产业技术方案（Mock 离线演示，非正式交付）" if mock else "# 产业技术方案（待人工复核）"
+    lines = [title, ""]
     for section in draft["sections"]:
         lines.extend((f"## {section['title']}", "", section["content"], ""))
         lines.extend(f"[{source_id}]" for source_id in section["citations"])
@@ -98,7 +99,9 @@ def export_delivery(result: dict, directory: Path) -> dict:
         refs.append(source_ref)
 
     directory.mkdir(parents=True, exist_ok=True)
-    (directory / "solution.md").write_text(_render_solution(draft), encoding="utf-8")
+    (directory / "solution.md").write_text(
+        _render_solution(draft, mock=result["llm_response"]["mock"]), encoding="utf-8"
+    )
     (directory / "evidence_chain.json").write_text(
         json.dumps(evidence_chain, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
@@ -135,7 +138,8 @@ def export_delivery(result: dict, directory: Path) -> dict:
         "scorecard": result["scorecard"],
         "trace_bundle": result["events"],
         "manifest": {"genome_version": result["config_version"], "commit_sha": commit_sha,
-                     "generated_at": datetime.now(timezone.utc).isoformat(), "mock": True,
+                     "generated_at": datetime.now(timezone.utc).isoformat(),
+                     "mock": result["llm_response"]["mock"],
                      "files": files},
     }
     validator("delivery_artifact.schema.json").validate(artifact)
@@ -151,7 +155,7 @@ def run_vertical_slice(
     run_id: str | None = None, inject_fault: str | None = None,
     fault_node: str | None = None,
 ) -> dict:
-    """按已编译 DAG 执行 Mock 纵切；首轮可注入一次缺引用以验证回退。
+    """按已编译 DAG 执行纵切；默认 Mock，首轮可注入缺引用以验证回退。
 
     ``inject_fault`` 只用于离线验收，故障仍通过 Scheduler 的统一事件出口。
     """
@@ -176,10 +180,10 @@ def run_vertical_slice(
     if inject_fault:
         # 验收故障不能等待默认 30 秒；只缩短被注入节点的调度超时。
         scheduler_policy["timeout"].setdefault("per_node", {})[fault_node] = 0.05
-    adapter = MockLLMAdapter()
+    adapter = create_adapter()
     controller = LoopController(graph, policy)
     scheduler = Scheduler(graph, scheduler_policy)
-    run_id = run_id or "mock-" + uuid4().hex[:12]
+    run_id = run_id or "run-" + uuid4().hex[:12]
     trace_id = run_id + "-trace"
     config_version = digest({"workflow": graph.nodes, "loop": graph.loop, "policy": policy})
     results: dict = {}
@@ -213,6 +217,9 @@ def run_vertical_slice(
                 request, results["retrieve"], run_id=run_id, round=round_number,
                 omit_first_citation=inject_initial_gap and round_number == 0,
             )
+            if response["degraded"]:
+                events.append(event(trace_id, run_id, "write", "degrade", round=round_number,
+                                    reason="模型调用降级到 Mock", config_version=config_version))
             return {"response": response, "draft": parse_draft(response)}
         if node_id == "verify":
             # L2 内部会先跑 L1 再合并，这里不要重复调用 check

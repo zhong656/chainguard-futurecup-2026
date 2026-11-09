@@ -1,16 +1,16 @@
 # 默认离线运行；LLM_PROVIDER 可在运行时选择以下四种 provider。
-# 不存凭据。非 Mock 模型名由接入负责人确认后填写；空值表示不可调用。
+# 不存凭据。真实 provider 使用 OpenAI 兼容端点；模型名可按账户/本机安装情况调整。
 provider: mock
 providers:
   deepseek:
-    small: ""
-    strong: ""
+    small: deepseek-chat
+    strong: deepseek-chat
   qwen:
-    small: ""
-    strong: ""
+    small: qwen-turbo
+    strong: qwen-plus
   ollama:
-    small: ""
-    strong: ""
+    small: llama3.2:3b
+    strong: qwen2.5:7b
   mock:
     small: mock-small
     strong: mock-strong
