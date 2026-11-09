@@ -29,6 +29,22 @@ SECTIONS = ("现状痛点", "技术选型", "数据方案", "实施阶段", "成
 SCENARIOS = ("normal", "numeric_conflict", "evidence_missing", "timeout", "no_convergence")
 
 
+def _commit_sha() -> str:
+    """在非 git 目录（评审解压后的包）里也能给出合法的 commit_sha。"""
+    import os
+
+    if os.environ.get("GIT_COMMIT"):
+        return os.environ["GIT_COMMIT"]
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+            encoding="utf-8", errors="replace",
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except (OSError, subprocess.SubprocessError):
+        return "0000000"
+
+
 def run_demo(request="用机器视觉升级精密零件产线质检", *, scenario="normal", engine="python", output=None, emit=None):
     if not isinstance(request, str) or not request.strip() or len(request) > 4000:
         raise ValueError("需求须为 1–4000 字的非空文本")
@@ -174,7 +190,10 @@ def export(result, directory: Path):
     for name in ["solution.md", "evidence_chain.json", "scorecard.json", "trace.jsonl"]:
         data = (directory / name).read_bytes()
         files.append({"path": name, "sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data)})
-    commit = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+    # 交付包会被解压到**没有 .git** 的目录里（评审现场就是这样），
+    # 所以不能直接读 git：优先环境变量，其次 git，最后用合法哨兵值。
+    # delivery_artifact 要求 commit_sha 是 7-40 位十六进制，故哨兵取 "0000000"。
+    commit = _commit_sha()
     artifact = {"solution": {"path": "solution.md", "sha256": files[0]["sha256"], "sections": list(SECTIONS)},
                 "evidence_chain": evidence, "scorecard": result["scorecard"], "trace_bundle": result["events"],
                 "manifest": {"genome_version": "d-mock-0.1", "commit_sha": commit,

@@ -45,7 +45,10 @@ def _commit_sha() -> str:
     if os.environ.get("GIT_COMMIT"):
         return os.environ["GIT_COMMIT"]
     try:
-        return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
     except (OSError, subprocess.SubprocessError):
         # delivery_artifact requires a 7-40 character hexadecimal commit id.
         return "0000000"
