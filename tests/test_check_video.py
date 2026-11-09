@@ -26,47 +26,49 @@ def _meta(duration=360.0, width=1920, height=1080, vcodec="h264", audio=True):
 
 
 def test_good_video_passes():
-    problems, facts = cv.evaluate(_meta(), size_bytes=200 * 1024 * 1024)
+    problems, warnings, facts = cv.evaluate(_meta(), size_bytes=200 * 1024 * 1024)
     assert not problems, problems
     assert any("1080" in f for f in facts)
 
 
 def test_too_short_rejected():
-    problems, _ = cv.evaluate(_meta(duration=120), size_bytes=10**8)
+    problems, _, _ = cv.evaluate(_meta(duration=120), size_bytes=10**8)
     assert any("时长" in p for p in problems)
 
 
 def test_too_long_rejected():
-    problems, _ = cv.evaluate(_meta(duration=600), size_bytes=10**8)
+    problems, _, _ = cv.evaluate(_meta(duration=600), size_bytes=10**8)
     assert any("时长" in p for p in problems)
 
 
 def test_low_resolution_rejected():
-    problems, _ = cv.evaluate(_meta(width=1280, height=720), size_bytes=10**8)
+    problems, _, _ = cv.evaluate(_meta(width=1280, height=720), size_bytes=10**8)
     assert any("1080" in p for p in problems)
 
 
 def test_wrong_codec_rejected():
-    problems, _ = cv.evaluate(_meta(vcodec="vp9"), size_bytes=10**8)
+    problems, _, _ = cv.evaluate(_meta(vcodec="vp9"), size_bytes=10**8)
     assert any("编码" in p for p in problems)
 
 
-def test_missing_audio_rejected():
-    problems, _ = cv.evaluate(_meta(audio=False), size_bytes=10**8)
-    assert any("音轨" in p for p in problems)
+def test_missing_audio_is_warning_not_failure():
+    """无音轨不是致命问题：赛题要求字幕烧录，字幕横条也能承载讲解。"""
+    problems, warnings, _ = cv.evaluate(_meta(audio=False), size_bytes=10**8)
+    assert not problems
+    assert any("音轨" in w for w in warnings)
 
 
 def test_oversize_rejected():
-    problems, _ = cv.evaluate(_meta(), size_bytes=600 * 1024 * 1024)
+    problems, _, _ = cv.evaluate(_meta(), size_bytes=600 * 1024 * 1024)
     assert any("MB" in p for p in problems)
 
 
 def test_no_video_stream_rejected():
-    problems, _ = cv.evaluate({"streams": [], "format": {"duration": "360"}}, size_bytes=10**8)
+    problems, _, _ = cv.evaluate({"streams": [], "format": {"duration": "360"}}, size_bytes=10**8)
     assert problems and "视频流" in problems[0]
 
 
 def test_hevc_is_allowed():
     """H.265 在部分机器上播放器兼容性差，但技术上可接受——判定要放行。"""
-    problems, _ = cv.evaluate(_meta(vcodec="hevc"), size_bytes=10**8)
+    problems, _, _ = cv.evaluate(_meta(vcodec="hevc"), size_bytes=10**8)
     assert not problems

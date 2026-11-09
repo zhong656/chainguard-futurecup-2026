@@ -49,9 +49,14 @@ def _ffprobe(path: Path) -> dict:
     return json.loads(proc.stdout)
 
 
-def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str]]:
-    """返回 (问题列表, 事实列表)。纯函数，便于测试。"""
+def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str], list[str]]:
+    """返回 (致命问题, 警告, 事实)。纯函数，便于测试。
+
+    致命 = 必须重做；警告 = 需人眼确认。**无音轨属于警告**：赛题要求的是
+    "字幕烧录"，不是必须有旁白；字幕横条同样承载讲解内容。
+    """
     problems: list[str] = []
+    warnings: list[str] = []
     facts: list[str] = []
 
     streams = meta.get("streams") or []
@@ -60,7 +65,7 @@ def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str]]:
 
     if video is None:
         problems.append("没有视频流")
-        return problems, facts
+        return problems, warnings, facts
 
     duration = float(meta.get("format", {}).get("duration") or 0)
     height = int(video.get("height") or 0)
@@ -83,11 +88,11 @@ def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str]]:
     if codec not in ALLOWED_CODECS:
         problems.append(f"编码 {codec or '未知'} 不在 {sorted(ALLOWED_CODECS)} 内")
     if audio is None:
-        problems.append("没有音轨——演示视频应当有讲解")
+        warnings.append("无音轨——需人眼确认字幕已烧录进画面（赛题要求是字幕，不是配音）")
     if size_mb > MAX_MB:
         problems.append(f"文件 {size_mb:.1f} MB 超过 {MAX_MB} MB 单包上限")
 
-    return problems, facts
+    return problems, warnings, facts
 
 
 def extract_frames(path: Path, count: int, outdir: Path) -> list[Path]:
@@ -126,7 +131,7 @@ def main() -> int:
         return 1
 
     meta = _ffprobe(args.path)
-    problems, facts = evaluate(meta, args.path.stat().st_size)
+    problems, warnings, facts = evaluate(meta, args.path.stat().st_size)
 
     print(f"文件：{args.path.name}")
     for fact in facts:
@@ -137,14 +142,19 @@ def main() -> int:
         if frames:
             print(f"  已抽 {len(frames)} 帧到 {frames[0].parent}")
 
+    if warnings:
+        print("\n[WARN] 需要人眼确认：")
+        for w in warnings:
+            print(f"  - {w}")
+
     if problems:
         print("\n[FAIL] 参数不合格：")
         for p in problems:
             print(f"  - {p}")
         return 1
 
-    print("\n[PASS] 参数合格（时长/分辨率/编码/音轨/体积）")
-    print("       仍需人眼看一遍：字幕是否烧录、有无 Key/内网地址、四幕是否齐全")
+    print("\n[PASS] 参数合格（时长/分辨率/编码/体积）")
+    print("       仍必须人眼看：字幕是否烧录、有无 Key/内网地址、四幕是否齐全")
     return 0
 
 

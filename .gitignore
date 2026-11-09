@@ -86,3 +86,8 @@ docs/consistency-report.md
 tmp/
 *.tmp
 *.bak
+
+# 成片材料（视频/PPT/PDF）不入库：体积大且属交付包内容，见 docs/交付验收清单.md
+veido/
+frames/
+*.mp4
