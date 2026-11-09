@@ -33,7 +33,7 @@ const TOTAL_SECONDS = 382;
 
   async function caption(second, title, body) {
     await until(second);
-    chapters.push({second, title, body});
+    chapters.push({second, actual_second: (Date.now() - started) / 1000, title, body});
     await page.evaluate(({title, body}) => {
       let box = document.getElementById('recording-caption');
       if (!box) {
@@ -136,6 +136,7 @@ const TOTAL_SECONDS = 382;
     assert.equal(await page.locator('#node-verify').getAttribute('class'), 'node running');
     assert.match(await page.locator('#round-path').innerText(), /R3.*write.*verify/);
     await caption(350, 'R3 路径：write → verify → gate → review → snap', '拖动进度条定位第三轮重跑，证明回放能够看到定向路径；这是故障注入证据，边界在文档中明示。');
+    await until(370);
     await page.locator('#load-demo').click();
     await page.waitForFunction(() => document.querySelector('#status').textContent === 'CLI Trace 已载入');
     await caption(370, '复现命令与工程边界', 'python -m src.run --output outputs/demo；pytest tests/test_console.py -q；python scripts/check.py。模型仍为 Mock，L3 待实现。');
