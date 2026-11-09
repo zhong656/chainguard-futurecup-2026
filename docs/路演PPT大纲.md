@@ -117,6 +117,9 @@ rounds.json / trace.jsonl / charts/*.svg / delivery_artifact.json
 **关键一件**：`evidence_refs.json` 给出每条引用的 **文件 / 页码 / 字符区间 / 原文 / 哈希**——
 可以回到原文逐字核对。
 
+> 口径：**页码仅 PDF/DOCX 等分页格式才有值**。当前 17 份语料是 Markdown，`page` 全为 `null`，
+> 靠 `file_path + char_range + hash` 回原文；PDF 页码贯通**尚未用真实文件验证**，不要宣称已验证。
+
 **讲法**：别人给结论，我们给"可回到原文的证据"。
 **证据**：`delivery_artifact.json` 的 `manifest.files`（含逐个 sha256）
 

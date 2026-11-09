@@ -52,7 +52,9 @@ python -m src.run --request "用机器视觉升级精密零件产线质检"
 ```
 solution.md            正文
 evidence_chain.json    引用到的 source_id 清单
-evidence_refs.json     每条引用的 文件 / 页码 / 字符区间 / 原文 / 哈希（可回原文核对）
+evidence_refs.json     每条引用的 文件 / 页码 / 字符区间 / 原文 / 哈希
+                       （页码仅 PDF/DOCX 等分页格式才有值；当前 Markdown 语料为 null，
+                        靠 file_path + char_range + hash 回原文核对）
 scorecard.json         评分卡（含 fail→pass 的终轮结论）
 rounds.json            每轮评分，首轮 fail、终轮 pass 的物证
 charts/*.svg           评分卡五维 + Self-Loop 收敛曲线
