@@ -17,10 +17,10 @@
 
 | 项 | 值 |
 | --- | --- |
-| `main` | **合并前基线 `f2fc3bf`**（2026-11-07 20:55）；**实时值以 `git rev-parse origin/main` 为准** |
-| 文件数 / 测试 | 159 个文件，251 个测试通过（2 skipped） |
+| `main` | **合并前基线 `3210c56`**（2026-11-09 02:45）；**实时值以 `git rev-parse origin/main` 为准** |
+| 文件数 / 测试 | 160 个文件，**256 个测试通过**（2 skipped）；本机/CI 装了 fastapi+httpx 时为 256，未装时 246 passed + 4 skipped（API 用例会跳过） |
 | `make check` | **PASS**（9 项检查，**0 条 WARN**） |
-| 打开中的 PR | **1**（#63；实时值用 `gh pr list --state open` 查） |
+| 打开中的 PR | **0**（#63/#64 已合；实时值用 `gh pr list --state open` 查） |
 | 纵切 | **已跑通**：`python -m src.run` → 7 件交付物（含 rounds.json 与 2 张 SVG） |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
