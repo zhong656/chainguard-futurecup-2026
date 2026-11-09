@@ -7,7 +7,7 @@
 # 修改本文件等同于调整分工，须走 PR，且全员知会。
 
 version: 1
-updated: 2026-11-04
+updated: 2026-11-09
 branch: main
 
 roles:
@@ -31,6 +31,10 @@ roles:
 
 # 一级目录 → 归属（check_contracts 会枚举仓库一级目录，缺一即失败）
 directories:
+  cases:
+    owner: B
+    backup: C
+    note: 黄金用例清单与预期结果表，属"结果验证"证据（材料 #6 的一部分）
   contracts:
     owner: A
     backup: C
