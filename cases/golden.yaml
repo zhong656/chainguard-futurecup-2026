@@ -1,0 +1,65 @@
+# 黄金用例（Owner: B）—— 5 个场景 × 预期结果
+#
+# 用途：给「端到端能跑通、且失败与降级路径也可复现」提供一页可核对的证据。
+# 每个用例都是**可执行**的：`python scripts/run_golden.py` 会真跑一遍并逐项比对，
+# 与预期不符就退出码 1。
+#
+# 约定：
+#   outcome: pass       → 纵切跑完并导出交付包
+#            blocked    → 按设计中止（抛 VerticalSliceError），不产出交付包
+#   rules:  期望在 issues 里出现过的 rule_id（任意一轮命中即可）
+#   trace_kinds: 期望出现过的 trace 事件类型
+
+version: 1
+
+cases:
+  - id: G1
+    name: 正常交付
+    scenario: 一次通过，无需修订
+    params:
+      inject_initial_gap: false
+    expect:
+      outcome: pass
+      rounds: 1
+      verdicts: [pass]
+      rules: []
+
+  - id: G2
+    name: 缺证据 → 定向修订后通过
+    scenario: 首轮漏回填引用（blocker），回退到 write 重跑
+    params:
+      inject_initial_gap: true
+    expect:
+      outcome: pass
+      rounds: 2
+      verdicts: [fail, pass]
+      rules: [CITATION_MISSING]
+
+  - id: G3
+    name: 数值冲突
+    scenario: 草稿写出与语料不一致的数字，规则命中 NUMERIC_MISMATCH
+    params:
+      inject_numeric_conflict: true
+      inject_initial_gap: false
+    expect:
+      outcome: pass
+      rules: [NUMERIC_MISMATCH]
+
+  - id: G4
+    name: 节点超时 → 降级安全中止
+    scenario: retrieve 注入超时，重试耗尽后降级，保留 trace
+    params:
+      inject_fault: timeout
+      fault_node: retrieve
+    expect:
+      outcome: blocked
+      trace_kinds: [fail, retry, degrade]
+
+  - id: G5
+    name: 无法收敛 → 达上限中止
+    scenario: 每轮都不修引用，3 轮后停止，不产出带病交付包
+    params:
+      inject_never_fix: true
+    expect:
+      outcome: blocked
+      rounds: 3
