@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import json
 
-import httpx
 import pytest
 import yaml
+
+# httpx 是**可选依赖**（录屏/HTTP 服务才需要装）。没装时整模块 skip，
+# 而不是让 pytest 在收集阶段报 ERROR——那会让 check.py 在干净环境里直接红。
+# 与 tests/test_api.py 的写法保持一致。
+httpx = pytest.importorskip("httpx", reason="llm 路由的 HTTP 传输测试需要 httpx")
 
 from scripts._schema import validator
 from src.llm_adapter import (
