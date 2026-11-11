@@ -71,7 +71,7 @@ def test_no_false_claims(text):
 
 def test_key_numbers_present(text):
     """核心数据必须在正文里，便于评审核对。"""
-    for token in ("333 passed", "11 份", "17 份", "0.85", "0.75"):
+    for token in ("11 份", "17 份", "0.85", "0.75"):
         assert token in text, f"缺少关键数据：{token}"
 
 
@@ -94,3 +94,16 @@ def test_scorecard_dimensions_match_config(text):
     for name, weight in weights.items():
         assert name in text, f"方案书缺少真实维度 {name}"
         assert f"{weight:.2f}" in text, f"方案书缺少 {name} 的真实权重 {weight}"
+
+
+def test_no_undated_test_counts(text):
+    """凡写"多少 passed"，必须带日期或提交号——防止把会变的数字写成恒真断言。
+
+    这是 A 在 #82/#84 review 里指出的同一类问题：测试锁死运行测试数，
+    过时值就变成了"通过"。
+    """
+    for line in text.splitlines():
+        if "passed" in line:
+            assert ("2026-" in line) or ("基线" in line), (
+                f"这行写了 passed 却没有日期/基线：{line.strip()[:60]}"
+            )
