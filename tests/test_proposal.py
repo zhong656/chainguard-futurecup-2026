@@ -79,3 +79,18 @@ def test_personal_info_not_in_repo(text):
     """仓库要转公开：方案书正文不得写学校/指导教师/学号等信息。"""
     for token in ("岭南师范学院", "石艳", "骆俊", "龙在飞"):
         assert token not in text, f"方案书正文出现了个人信息：{token}"
+
+def test_scorecard_dimensions_match_config(text):
+    """方案书里的评分维度与权重必须与 configs/verifier.yaml 完全一致。
+
+    这条是因为真实踩过：初稿把维度写成 evidence/completeness/readability，
+    而代码里是 citation/consistency/coverage/logic/format——文档与实现对不上，
+    评审一跑就露馅。
+    """
+    import yaml
+
+    cfg = yaml.safe_load((ROOT / "configs" / "verifier.yaml").read_text(encoding="utf-8"))
+    weights = cfg["scorecard"]["weights"]
+    for name, weight in weights.items():
+        assert name in text, f"方案书缺少真实维度 {name}"
+        assert f"{weight:.2f}" in text, f"方案书缺少 {name} 的真实权重 {weight}"
