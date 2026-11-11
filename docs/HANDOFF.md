@@ -25,10 +25,10 @@
 
 | 项 | 值 |
 | --- | --- |
-| `main` | **合并前基线 `a93ec62`**（2026-11-09 21:40）；**实时值以 `git rev-parse origin/main` 为准** |
-| 文件数 / 测试 | **178 个文件**（= 打包白名单数，两个口径已对齐）；**303 个测试通过**（2 skipped）——**装全依赖时**；只装 pyyaml/jsonschema/pytest 时 API 与 langgraph/pymupdf 相关用例会 skip（C 环境实测 291 passed / 5 skipped）。**报数必须注明环境** |
+| `main` | **合并前基线 `dfde7fd`**（2026-11-11 12:18）；**实时值以 `git rev-parse origin/main` 为准** |
+| 文件数 / 测试 | **186 个文件**（`git ls-tree -r --name-only origin/main`）；**333 passed / 2 skipped**（本机装全依赖，`python scripts/check.py`，2026-11-11）；报数须注明环境，实时值以当前 main 复测为准 |
 | `make check` | **PASS**（9 项检查，**0 条 WARN**） |
-| 打开中的 PR | **2**：#77 四档模型路由与降级（A）、#78 控制台真实 API 与录制（D）；实时值用 `gh pr list --state open` 查 |
+| 打开中的 PR | **合并后基线 2**：#82 项目文档正文、#84 可选依赖测试护栏（均已获 A 返修意见）；实时值用 `gh pr list --state open` 查 |
 | 纵切 | **已跑通**：`python -m src.run` → **9 件产物**（solution / evidence_chain / evidence_refs / scorecard / rounds / trace / 2 张 SVG / delivery_artifact）；示例输出包另附包内 README，共 10 项 |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
