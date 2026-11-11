@@ -26,8 +26,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-MIN_SECONDS = 300   # 5 分钟
-MAX_SECONDS = 480   # 8 分钟
+MIN_SECONDS = 180   # 官方 3 分钟，见 Issue #86 / 赛制说明 P25
+MAX_SECONDS = 300   # 官方 5 分钟
 MIN_HEIGHT = 1080   # 1080p
 MAX_MB = 500        # 赛事单包上限
 ALLOWED_CODECS = {"h264", "hevc"}
@@ -81,7 +81,7 @@ def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str], list[st
 
     if not (MIN_SECONDS <= duration <= MAX_SECONDS):
         problems.append(
-            f"时长 {duration:.0f}s 不在 {MIN_SECONDS}–{MAX_SECONDS}s（5–8 分钟）范围内"
+            f"时长 {duration:.0f}s 不在 {MIN_SECONDS}–{MAX_SECONDS}s（官方 3–5 分钟）范围内"
         )
     if height < MIN_HEIGHT:
         problems.append(f"高度 {height} 低于 {MIN_HEIGHT}p")

@@ -18,26 +18,29 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import check_video as cv  # noqa: E402
 
 
-def _meta(duration=360.0, width=1920, height=1080, vcodec="h264", audio=True):
+def _meta(duration=270.0, width=1920, height=1080, vcodec="h264", audio=True):
     streams = [{"codec_type": "video", "width": width, "height": height, "codec_name": vcodec}]
     if audio:
         streams.append({"codec_type": "audio", "codec_name": "aac"})
     return {"streams": streams, "format": {"duration": str(duration)}}
 
 
-def test_good_video_passes():
-    problems, warnings, facts = cv.evaluate(_meta(), size_bytes=200 * 1024 * 1024)
+@pytest.mark.parametrize("duration", [180, 270, 300])
+def test_good_video_passes(duration):
+    problems, warnings, facts = cv.evaluate(_meta(duration=duration), size_bytes=200 * 1024 * 1024)
     assert not problems, problems
     assert any("1080" in f for f in facts)
 
 
-def test_too_short_rejected():
-    problems, _, _ = cv.evaluate(_meta(duration=120), size_bytes=10**8)
+@pytest.mark.parametrize("duration", [120, 179.99])
+def test_too_short_rejected(duration):
+    problems, _, _ = cv.evaluate(_meta(duration=duration), size_bytes=10**8)
     assert any("时长" in p for p in problems)
 
 
-def test_too_long_rejected():
-    problems, _, _ = cv.evaluate(_meta(duration=600), size_bytes=10**8)
+@pytest.mark.parametrize("duration", [300.01, 393.36, 480, 600])
+def test_too_long_rejected(duration):
+    problems, _, _ = cv.evaluate(_meta(duration=duration), size_bytes=10**8)
     assert any("时长" in p for p in problems)
 
 

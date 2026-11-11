@@ -58,10 +58,16 @@ manifest SHA256/字节数校验的 `rounds.json`、`solution.md` 和证据文件
 
 ## 演示
 
-见 `docs/D-DEMO.md` 的真实 API 连续演示脚本，保留 fail→pass，并单独回放故障注入的 R3
-`write → verify`。最终视频与 recording manifest 位于 `outputs/d-demo-video/`，PPT 与 PDF
-位于 `outputs/d-materials/`；这些运行产物不入 Git。
+见 docs/D-DEMO.md（Issue #86）：官方时长 3–5 分钟，目标 4 分 30 秒。
+保留平台界面、Agent 编排、调度执行、验证与反馈循环四段；仅回放本次 R0→R1，
+每事件 0.18 秒；YAML 10 秒、证据链 20 秒。原 R3 故障注入夹具仍供独立验收。
 
 浏览器验收和录制另需 Node、Playwright 与 Edge；不加入 Python 服务的 requirements。
-依次运行 `python -m web.capture_round3`、`node web/verify_console.cjs`、
-`node web/record_demo.cjs`。`CONSOLE_URL` 可覆盖验收地址，录制参数固定 1920×1080。
+依次运行 python -m web.capture_round3、node web/verify_console.cjs；
+新短版录制用 node web/record_demo.cjs，固定 1920×1080。CONSOLE_URL 可覆盖地址。
+
+录制源与 recording.json 默认位于 outputs/d-demo-video-v2/，PPT 与 PDF 位于
+outputs/d-materials/；均不入 Git。H.264 成片按 #86 放到
+D:/未来杯-ChainGuard/成片材料-20261111/演示视频_v2.mp4。
+使用 python scripts/check_video.py <成片路径> --frames 8 核验 180–300 秒及媒体参数，
+再人工确认字幕烧录、敏感信息与四段操作完整。
