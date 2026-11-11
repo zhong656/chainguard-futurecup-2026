@@ -55,10 +55,23 @@ def test_pending_items_are_explicit(text):
 
 
 def test_key_numbers_match_source(text):
-    """正文引用的关键数字必须与实测口径一致。"""
-    assert "317 passed" in text or "317" in text
-    assert "100%" in text and "86.4%" in text
-    assert "0.95" in text and "0.85" in text
+    """正文引用的关键数字必须与实测口径一致。
+
+    **不再断言运行测试数**（如 317/337/380）——那个数每次提交都会变，
+    锁死它只会把过时值固化成"通过"。改为：稳定指标必须出现 + 基线必须带日期。
+    """
+    assert "100%" in text and "86.4%" in text          # 检索命中率：稳定结论
+    assert "0.95" in text and "0.85" in text           # Self-Loop 分数与阈值
+    assert "11 份契约" in text and "17 份语料" in text   # 结构事实
+
+
+def test_baseline_is_dated_not_hardcoded(text):
+    """凡出现"多少 passed"，必须同时给出日期与提交号，否则就是无源的恒真断言。"""
+    for line in text.splitlines():
+        if "passed" in line and "python scripts/check.py" not in line:
+            assert "2026-" in line or "基线" in line, (
+                f"这行写了测试数却没有日期/基线说明：{line.strip()[:60]}"
+            )
 
 
 def test_boundary_section_is_honest(text):
