@@ -25,10 +25,10 @@
 
 | 项 | 值 |
 | --- | --- |
-| `main` | **合并前基线 `dfde7fd`**（2026-11-11 12:18）；**实时值以 `git rev-parse origin/main` 为准** |
-| 文件数 / 测试 | **186 个文件**（`git ls-tree -r --name-only origin/main`）；**333 passed / 2 skipped**（本机装全依赖，`python scripts/check.py`，2026-11-11）；报数须注明环境，实时值以当前 main 复测为准 |
+| `main` | **不写固定值**：`git rev-parse --short origin/main`（本文件只留命令，不留数字） |
+| 文件数 / 测试 | **现场查，不写死**：`git ls-tree -r --name-only origin/main | wc -l` 与 `python scripts/check.py`。报数须注明环境——**装全依赖** 与 **未装可选依赖**（httpx/fastapi/uvicorn/pymupdf/docx/langgraph/chromadb）两种口径的 skip 数不同 |
 | `make check` | **PASS**（9 项检查，**0 条 WARN**） |
-| 打开中的 PR | **合并后基线 2**：#82 项目文档正文、#84 可选依赖测试护栏（均已获 A 返修意见）；实时值用 `gh pr list --state open` 查 |
+| 打开中的 PR | **现场查**：`gh pr list --state open`。（不写死数量——每次合并都会变） |
 | 纵切 | **已跑通**：`python -m src.run` → **9 件产物**（solution / evidence_chain / evidence_refs / scorecard / rounds / trace / 2 张 SVG / delivery_artifact）；示例输出包另附包内 README，共 10 项 |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
