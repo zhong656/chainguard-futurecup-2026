@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="734" viewBox="0 0 1280 734">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1b5e8c"/></marker></defs>
+<rect x="0.0" y="0.0" width="1280.0" height="734.0" rx="0" fill="#ffffff" stroke="none" stroke-width="1"/>
+<text x="48" y="54" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#1f2933" text-anchor="start">一次运行的真实节点时序</text>
+<text x="48" y="80" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="400" fill="#5b6770" text-anchor="start">数据来源 trace.jsonl（29 个事件，2 轮，总跨度 117 ms）——非示意图</text>
+<rect x="48.0" y="100.0" width="14.0" height="12.0" rx="4" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="68" y="111" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12" font-weight="400" fill="#5b6770" text-anchor="start">第 0 轮（fail）</text>
+<rect x="189.0" y="100.0" width="14.0" height="12.0" rx="4" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<text x="209" y="111" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12" font-weight="400" fill="#5b6770" text-anchor="start">第 1 轮（pass）</text>
+<line x1="168" y1="672" x2="1210" y2="672" stroke="#c7d0d8" stroke-width="1"/>
+<line x1="168.0" y1="672" x2="168.0" y2="677" stroke="#c7d0d8"/>
+<text x="168" y="692" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="middle">0 ms</text>
+<line x1="428.5" y1="672" x2="428.5" y2="677" stroke="#c7d0d8"/>
+<text x="428.5" y="692" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="middle">29 ms</text>
+<line x1="689.0" y1="672" x2="689.0" y2="677" stroke="#c7d0d8"/>
+<text x="689.0" y="692" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="middle">59 ms</text>
+<line x1="949.5" y1="672" x2="949.5" y2="677" stroke="#c7d0d8"/>
+<text x="949.5" y="692" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="middle">88 ms</text>
+<line x1="1210.0" y1="672" x2="1210.0" y2="677" stroke="#c7d0d8"/>
+<text x="1210.0" y="692" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="middle">117 ms</text>
+<rect x="168.0" y="132.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="152" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">plan</text>
+<text x="156" y="166" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">planner</text>
+<rect x="168.0" y="136.0" width="11.6" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="185.59129849206823" y="146" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">1.3 ms</text>
+<text x="156" y="198" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">retrieve</text>
+<text x="156" y="212" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">researcher</text>
+<rect x="179.6" y="182.0" width="99.3" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="284.87676557585263" y="192" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">11.2 ms</text>
+<rect x="168.0" y="224.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="244" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">fanout</text>
+<text x="156" y="258" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">parallel</text>
+<rect x="278.9" y="228.0" width="3.0" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="156" y="290" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">analyze</text>
+<text x="156" y="304" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">analyst</text>
+<rect x="287.8" y="274.0" width="3.0" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<rect x="168.0" y="316.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="336" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">outline</text>
+<text x="156" y="350" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">writer</text>
+<rect x="287.8" y="320.0" width="3.0" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="156" y="382" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">write</text>
+<text x="156" y="396" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">writer</text>
+<rect x="287.8" y="366.0" width="184.3" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="478.15389598765694" y="376" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">20.8 ms</text>
+<rect x="849.8" y="380.0" width="137.4" height="12.0" rx="3" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<text x="993.1894845413552" y="390" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">15.5 ms</text>
+<rect x="168.0" y="408.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="428" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">verify</text>
+<text x="156" y="442" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">verifier</text>
+<rect x="472.2" y="412.0" width="338.8" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="816.9395719144511" y="422" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">38.1 ms</text>
+<rect x="987.2" y="426.0" width="188.6" height="12.0" rx="3" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<text x="1181.7945666720655" y="436" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">21.2 ms</text>
+<text x="156" y="474" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">gate</text>
+<text x="156" y="488" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">condition</text>
+<rect x="810.9" y="458.0" width="26.8" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="843.7638795359424" y="468" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">3.0 ms</text>
+<rect x="1175.8" y="472.0" width="21.3" height="12.0" rx="3" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<text x="1203.0941327900573" y="482" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="9.5" font-weight="400" fill="#5b6770" text-anchor="start">2.4 ms</text>
+<rect x="168.0" y="500.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="520" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">review</text>
+<text x="156" y="534" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">reviewer</text>
+<rect x="1210.0" y="518.0" width="3.0" height="12.0" rx="3" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<text x="156" y="566" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">snap</text>
+<text x="156" y="580" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">checkpoint</text>
+<rect x="1210.0" y="564.0" width="3.0" height="12.0" rx="3" fill="#2f9e6f" stroke="none" stroke-width="1"/>
+<rect x="168.0" y="592.0" width="1042.0" height="38.0" rx="6" fill="#f8fafc" stroke="none" stroke-width="1"/>
+<text x="156" y="612" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="end">revise</text>
+<text x="156" y="626" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="end">loop</text>
+<rect x="837.8" y="596.0" width="3.0" height="12.0" rx="3" fill="#9aa5b1" stroke="none" stroke-width="1"/>
+<text x="1200" y="622" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#c05621" text-anchor="end">revise = 定向回退（只重跑 write，其余结果保留）</text>
+<text x="48" y="662" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">时间（相对首节点启动，单位毫秒）</text>
+</svg>

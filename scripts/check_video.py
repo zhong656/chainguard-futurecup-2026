@@ -8,7 +8,7 @@
 --------------------------
 - 字幕是否烧录进画面；
 - 画面里有没有 API Key / 内网地址 / 他人姓名；
-- 四幕是否齐全（真实运行 / DAG 流转 / fail→pass 评分卡 / Trace 重放）。
+- 官方四段是否齐全（平台界面 / Agent 编排过程 / 任务调度执行 / 结果验证与反馈循环）。
 
 所以本脚本跑完给的是"参数合格"，**不是"视频合格"**。最后一步永远是人看一遍。
 
@@ -26,8 +26,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-MIN_SECONDS = 300   # 5 分钟
-MAX_SECONDS = 480   # 8 分钟
+MIN_SECONDS = 180   # 官方 3 分钟，见 Issue #86 / 赛制说明 P25
+MAX_SECONDS = 300   # 官方 5 分钟
 MIN_HEIGHT = 1080   # 1080p
 MAX_MB = 500        # 赛事单包上限
 ALLOWED_CODECS = {"h264", "hevc"}
@@ -81,7 +81,7 @@ def evaluate(meta: dict, size_bytes: int) -> tuple[list[str], list[str], list[st
 
     if not (MIN_SECONDS <= duration <= MAX_SECONDS):
         problems.append(
-            f"时长 {duration:.0f}s 不在 {MIN_SECONDS}–{MAX_SECONDS}s（5–8 分钟）范围内"
+            f"时长 {duration:.0f}s 不在 {MIN_SECONDS}–{MAX_SECONDS}s（官方 3–5 分钟）范围内"
         )
     if height < MIN_HEIGHT:
         problems.append(f"高度 {height} 低于 {MIN_HEIGHT}p")

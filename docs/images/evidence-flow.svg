@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="660" viewBox="0 0 1280 660">
+<defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1b5e8c"/></marker></defs>
+<rect x="0.0" y="0.0" width="1280.0" height="660.0" rx="0" fill="#ffffff" stroke="none" stroke-width="1"/>
+<text x="48" y="54" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="23" font-weight="700" fill="#1f2933" text-anchor="start">证据链：从语料切片到可回原文核对</text>
+<text x="48" y="80" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="400" fill="#5b6770" text-anchor="start">每一跳都对应仓库中真实存在的文件或函数；没有一环是「示意图」</text>
+<rect x="48.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#eef4fb" stroke="#c7d0d8" stroke-width="1"/>
+<text x="62" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">① 语料</text>
+<text x="62" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">knowledge/corpus/ 17 份</text>
+<text x="62" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">原创转述卡</text>
+<text x="62" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">逐条登记许可依据</text>
+<line x1="227.0" y1="225.0" x2="247.0" y2="225.0" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="250.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#e9f5ef" stroke="#c7d0d8" stroke-width="1"/>
+<text x="264" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">② 切片</text>
+<text x="264" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">knowledge_hub.py</text>
+<text x="264" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">跳过 front-matter</text>
+<text x="264" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">与权利声明段</text>
+<text x="264" y="261" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">119 → 51 片</text>
+<line x1="429.0" y1="225.0" x2="449.0" y2="225.0" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="452.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#eef4fb" stroke="#c7d0d8" stroke-width="1"/>
+<text x="466" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">③ 检索</text>
+<text x="466" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">BM25 + 向量双路</text>
+<text x="466" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">RRF 融合 k=60</text>
+<text x="466" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">score 为融合分</text>
+<line x1="631.0" y1="225.0" x2="651.0" y2="225.0" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="654.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#e9f5ef" stroke="#c7d0d8" stroke-width="1"/>
+<text x="668" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">④ 证据池</text>
+<text x="668" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">evidence.py</text>
+<text x="668" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">source_id 形如 kb:x</text>
+<text x="668" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">每条带原文与哈希</text>
+<line x1="833.0" y1="225.0" x2="853.0" y2="225.0" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="856.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#eef4fb" stroke="#c7d0d8" stroke-width="1"/>
+<text x="870" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">⑤ 引用</text>
+<text x="870" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">writer 必须回填</text>
+<text x="870" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">source_id</text>
+<text x="870" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">否则 CITATION_MISSING</text>
+<line x1="1035.0" y1="225.0" x2="1055.0" y2="225.0" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#a)"/>
+<rect x="1058.0" y="150.0" width="176.0" height="150.0" rx="10" fill="#e9f5ef" stroke="#c7d0d8" stroke-width="1"/>
+<text x="1072" y="178" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">⑥ 回查</text>
+<text x="1072" y="204" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">evidence_refs.json</text>
+<text x="1072" y="223" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">文件/字符区间/哈希</text>
+<text x="1072" y="242" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">可逐字核对</text>
+<rect x="48.0" y="366.0" width="1184.0" height="96.0" rx="10" fill="#fdf1e3" stroke="#c7d0d8" stroke-width="1"/>
+<text x="68" y="396" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="13.5" font-weight="700" fill="#1f2933" text-anchor="start">验证环（L1 规则验证 · rule_checker.py）</text>
+<text x="68" y="422" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· SCHEMA_INVALID：产物是否符合契约</text>
+<text x="628" y="422" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· CITATION_MISSING：有结论但无引用</text>
+<text x="68" y="442" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· CITATION_UNKNOWN：引用了不存在的 source_id</text>
+<text x="628" y="442" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· NUMERIC_MISMATCH：正文数字与证据不一致</text>
+<text x="68" y="462" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· MISSING_SECTION：缺必备章节</text>
+<line x1="1130.0" y1="366.0" x2="1130.0" y2="304.0" stroke="#c05621" stroke-width="1.6" marker-end="url(#a)" stroke-dasharray="6 4"/>
+<text x="1122" y="358" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#c05621" text-anchor="end">命中区块 → 回到 ⑤ 定向重写</text>
+<rect x="48.0" y="496.0" width="1184.0" height="118.0" rx="10" fill="#eaf3f8" stroke="#c7d0d8" stroke-width="1"/>
+<text x="68" y="526" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="13.5" font-weight="700" fill="#1f2933" text-anchor="start">落盘产物（9 件，全部进 manifest 并附 sha256）</text>
+<text x="68" y="554" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· solution.md</text>
+<text x="468" y="554" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· evidence_chain.json</text>
+<text x="868" y="554" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· evidence_refs.json</text>
+<text x="68" y="574" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· scorecard.json</text>
+<text x="468" y="574" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· rounds.json</text>
+<text x="868" y="574" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· trace.jsonl</text>
+<text x="68" y="594" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· charts/scorecard.svg</text>
+<text x="468" y="594" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· charts/convergence.svg</text>
+<text x="868" y="594" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">· delivery_artifact.json</text>
+<text x="48" y="642" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">口径：页码仅 PDF/DOCX 等分页格式有值；当前 Markdown 语料 page 为 null，靠 file_path + char_range + hash 回原文。</text>
+</svg>
