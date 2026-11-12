@@ -41,6 +41,12 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import package_release as pr  # noqa: E402
 import package_submission as ps  # noqa: E402
 
+# 官方口径的硬约束（赛制说明 P25）
+VIDEO_MIN_S, VIDEO_MAX_S = 180, 300      # 3~5 分钟
+VIDEO_MIN_HEIGHT = 1080                   # 1080p
+PDF_MIN_HAN = 5000                        # 方案书字数
+SLIDES_MIN_PAGES, SLIDES_MAX_PAGES = 12, 15
+
 EDGE_CANDIDATES = (
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
     r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
@@ -165,7 +171,71 @@ def rebuild_d_package(materials: Path, pptx: Path, out: Path) -> Path | None:
     return target
 
 
-def assemble(materials: Path, out: Path, version: str) -> int:
+def gate(materials: Path) -> list[str]:
+    """打包**之前**的硬门禁：缺项、超时、分辨率不足一律不许出目录。
+
+    A 在 #87 review 里指出：旧版缺材料或选中超时视频也会 exit 0，
+    等于"生成了一个看起来能交的目录"。这里逐项卡死。
+    """
+    problems: list[str] = []
+
+    pdf, pptx, video = pick_pdf(materials), pick_pptx(materials), pick_video(materials)
+    if pdf is None:
+        problems.append("缺少方案书 PDF")
+    if pptx is None:
+        problems.append("缺少方案讲解 PPT")
+    if video is None:
+        problems.append("缺少演示视频（mp4）")
+
+    if video is not None:
+        info = probe_video(video)
+        duration, height = info.get("duration", 0), info.get("height", 0)
+        if not (VIDEO_MIN_S <= duration <= VIDEO_MAX_S):
+            problems.append(
+                f"视频时长 {duration:.0f}s 不在 {VIDEO_MIN_S}–{VIDEO_MAX_S}s（官方 3~5 分钟）"
+            )
+        if height < VIDEO_MIN_HEIGHT:
+            problems.append(
+                f"视频分辨率高 {height} 低于 {VIDEO_MIN_HEIGHT}p"
+                f"（可能是微信压缩版，应使用原始文件）"
+            )
+
+    if pdf is not None:
+        try:
+            from pypdf import PdfReader
+            text = "\n".join((p.extract_text() or "") for p in PdfReader(str(pdf)).pages)
+            han = len(re.findall(r"[\u4e00-\u9fff]", text))
+            if han < PDF_MIN_HAN:
+                problems.append(f"方案书汉字 {han} < {PDF_MIN_HAN}（官方要求不少于 5000 字）")
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"方案书 PDF 无法解析：{exc}")
+
+    if pptx is not None:
+        try:
+            from pptx import Presentation
+            prs = Presentation(str(pptx))
+            pages = len(prs.slides)
+            if not (SLIDES_MIN_PAGES <= pages <= SLIDES_MAX_PAGES):
+                problems.append(f"PPT 页数 {pages} 不在 {SLIDES_MIN_PAGES}–{SLIDES_MAX_PAGES}")
+            w_in, h_in = prs.slide_width / 914400, prs.slide_height / 914400
+            if abs(w_in - 13.33) > 0.05 or abs(h_in - 7.50) > 0.05:
+                problems.append(f"PPT 尺寸 {w_in:.2f}×{h_in:.2f}，应为 13.33×7.50")
+        except Exception as exc:  # noqa: BLE001
+            problems.append(f"PPT 无法解析：{exc}")
+
+    return problems
+
+
+def assemble(materials: Path, out: Path, version: str, allow_missing: bool = False) -> int:
+    problems = gate(materials)
+    if problems:
+        print("[FAIL] 门禁未通过，拒绝生成材料目录（不给「看起来能交」的假象）：")
+        for p in problems:
+            print(f"  - {p}")
+        if not allow_missing:
+            return 1
+        print("  [WARN] --allow-missing：继续生成，但该目录**不可上传**")
+
     out.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now().strftime("%Y%m%d")
     rows: list[tuple[str, Path, str]] = []
@@ -272,6 +342,8 @@ def main() -> int:
     parser.add_argument("--materials", type=Path, required=True, help="成片所在目录（仓库外）")
     parser.add_argument("--out", type=Path, required=True, help="生成的提交材料目录")
     parser.add_argument("--version", default="1.0")
+    parser.add_argument("--allow-missing", action="store_true",
+                        help="门禁失败仍生成（仅预演，生成的目录不可上传）")
     args = parser.parse_args()
 
     pptx = pick_pptx(args.materials)
@@ -280,7 +352,7 @@ def main() -> int:
         if rebuilt:
             print(f"  D 组交付包已更新：{rebuilt.name}\n")
 
-    return assemble(args.materials, args.out, args.version)
+    return assemble(args.materials, args.out, args.version, args.allow_missing)
 
 
 if __name__ == "__main__":

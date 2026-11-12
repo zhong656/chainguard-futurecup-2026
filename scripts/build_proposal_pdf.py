@@ -298,6 +298,12 @@ def verify(pdf_path: Path) -> int:
     print(f"  · 图片对象 {images}")
     print(f"  · 体积 {pdf_path.stat().st_size / 1024:.0f} KB")
 
+    # 官方硬门槛：方案书 PDF **字数不少于 5000 字**。
+    # 之前只校验章节齐全，字数不足也能 PASS——A 在 #87 review 里指出。
+    if han < 5000:
+        print(f"  [FAIL] PDF 汉字 {han} < 5000（官方要求字数不少于 5000 字）")
+        return 1
+
     required = ["选题背景", "平台总体架构", "Agent 角色定义", "调度算法",
                 "结果验证策略", "核心代码模块", "测试用例", "人工智能使用说明"]
     missing = [r for r in required if r not in text]
