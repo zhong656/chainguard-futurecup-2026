@@ -161,3 +161,58 @@ def test_real_repo_is_clean():
     assert cpr.check_corpus_flags() == []
     assert cpr.check_personal_info([]) == [], cpr.check_personal_info([])
     assert cpr.check_secrets(use_history=False) == [], cpr.check_secrets(use_history=False)
+
+# ── A 复审第二轮指出的三处（判定逻辑与日志）────────────────────
+def test_decide_blocks_when_unverified_by_default():
+    """跳过历史扫描（无法验证）**不能**报"可以转公开"。"""
+    code, msg = cpr.decide([], ["已跳过全历史扫描：**历史未核验**"])
+    assert code == 1, "未核验却放行 = 假绿"
+    assert "未核验" in msg
+
+
+def test_decide_allow_unverified_but_labels_it():
+    code, msg = cpr.decide([], ["已跳过全历史扫描：**历史未核验**"], allow_unverified=True)
+    assert code == 0
+    assert "未核验" in msg and "WARN" in msg
+
+
+def test_real_problem_survives_waiver():
+    """真实问题**不因豁免参数**变成通过 —— 这是旧版的"抹掉"缺陷。"""
+    problems = ["密钥与个人信息（工作树）：命中密钥规则「sk- 前缀」",
+                "历史中出现过的二进制文件：git log 失败：**历史未核验**"]
+    code, msg = cpr.decide(problems, unverified=[problems[1]], allow_unverified=True)
+    assert code == 1, "豁免参数把真实问题也放过了"
+    assert "sk- 前缀" in msg
+
+
+def test_git_failure_reported_as_unverified():
+    """git 失败必须进入"未核验"，而不是被当成"没问题"。"""
+    monkey = cpr.check_history_binaries()
+    assert monkey == []  # 真实仓库正常
+    original = cpr._git
+    try:
+        cpr._git = lambda *a, **k: ("", False)
+        problems = cpr.check_history_binaries()
+    finally:
+        cpr._git = original
+    code, _ = cpr.decide(problems, unverified=problems)
+    assert code == 1
+
+
+def test_personal_hit_message_does_not_echo_content(sandbox):
+    """日志只报规则名，**不得复述命中内容**（A 指出的第三处）。"""
+    (sandbox / "plan.md").write_text(_teacher() + "\n", encoding="utf-8")
+    hits = cpr.check_personal_info([])
+    assert hits, "应能检出"
+    joined = " ".join(hits)
+    assert "张三" not in joined, f"日志复述了个人信息：{joined}"
+    assert "指导教师标签" in joined
+
+
+def test_secret_hit_message_does_not_echo_content(sandbox):
+    (sandbox / "c.md").write_text(f"key = {_sk()}\n", encoding="utf-8")
+    hits = cpr.check_secrets(use_history=False)
+    assert hits
+    joined = " ".join(hits)
+    assert "a" * 20 not in joined, f"日志复述了密钥内容：{joined}"
+    assert "sk- 前缀" in joined

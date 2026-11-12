@@ -107,17 +107,33 @@ def check_history_binaries() -> list[str]:
                   if not k.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES))
 
 
+# 规则名：日志里只报"命中了哪条规则"，**绝不复述命中内容**。
+# A 在 #84 review 里指出：旧版把「指导教师：某某」整行打进日志，
+# 等于为了检查个人信息而先把个人信息写进日志。
+SECRET_LABELS = (
+    ("sk- 前缀", 0), ("ghp_ 前缀", 1), ("gho_ 前缀", 2), ("github_pat_ 前缀", 3),
+    ("AWS Access Key", 4), ("Slack Token", 5), ("Google API Key", 6),
+    ("私钥块", 7), ("明文口令赋值", 8),
+)
+PERSONAL_LABELS = (
+    "指导教师标签", "导师标签", "学号标签", "学校/学院标签", "演讲人标签", "团队名称标签",
+)
+
+
 def _scan_text(text: str) -> list[str]:
+    """返回**规则名**列表，不含任何命中内容。"""
     hits: list[str] = []
-    for pattern in SECRET_PATTERNS:
+    for label, idx in SECRET_LABELS:
+        if re.search(SECRET_PATTERNS[idx], text):
+            hits.append(f"命中密钥规则「{label}」")
+    for idx, label in enumerate(PERSONAL_LABELS):
+        pattern = PERSONAL_PATTERNS[idx]
         for m in re.finditer(pattern, text):
-            hits.append(f"密钥模式 {pattern} → {m.group(0)[:14]}…")
-    for pattern in PERSONAL_PATTERNS:
-        for m in re.finditer(pattern, text):
-            line = m.group(0)[:40]
+            line = m.group(0)
             if any(word in line for word in ("不写", "不得", "禁止", "不要", "待补", "示例")):
                 continue
-            hits.append(f"个人信息 {line}")
+            hits.append(f"命中个人信息规则「{label}」")
+            break
     return hits
 
 
@@ -168,7 +184,7 @@ def check_personal_info(extra_words: list[str]) -> list[str]:
         except (UnicodeDecodeError, OSError):
             continue
         for hit in _scan_text(text):
-            if hit.startswith("个人信息"):
+            if "个人信息" in hit:   # 新文案是「命中个人信息规则「…」」
                 hits.append(f"{path.relative_to(ROOT)}: {hit}")
         for word in extra_words:
             if word and word in text:
@@ -212,12 +228,49 @@ def check_license_absent() -> list[str]:
     return []
 
 
+def decide(problems: list[str], unverified: list[str],
+           allow_unverified: bool = False) -> tuple[int, str]:
+    """判定的唯一入口（纯函数，便于负例测试）。
+
+    规则：
+      1. **发现真实问题 → 一律 FAIL**，任何豁免参数都不能把它变成 PASS；
+      2. **无法验证 → 默认 FAIL**（A 指出的第二处假绿：跳过历史扫描却报"可以转公开"）；
+         只有显式 `allow_unverified` 才放行，且结论里必须写明"未核验"。
+
+    返回 (退出码, 结论文本)。
+    """
+    real = [p for p in problems if p not in unverified]
+    if real:
+        return 1, "\n".join([
+            "[FAIL] 存在阻断项，**不要现在转公开**：",
+            *[f"  - {p}" for p in real[:8]],
+        ])
+
+    if unverified:
+        if not allow_unverified:
+            return 1, "\n".join([
+                "[FAIL] 有检查未能完成，**不能判定为可公开**：",
+                *[f"  - {p}" for p in unverified[:8]],
+                "",
+                "  提示：离线环境可加 --assume-unverified 放行，但结论会标注「未核验」；",
+                "        真实问题不会因为该参数而被放过。",
+            ])
+        return 0, "\n".join([
+            "[WARN] 已放行，但**历史/部分检查未核验**——不能据此断言仓库干净。",
+            *[f"  - {p}" for p in unverified[:8]],
+        ])
+
+    return 0, ("[PASS] 可以转公开。\n"
+               "      转公开后本检查失效——仓库已可见，撤回需要 force-push 全部历史，基本不可行。")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="公开仓库前的合规自检")
     parser.add_argument("--skip-history", action="store_true",
                         help="跳过全历史扫描（会显著降低保证强度，报告中标注）")
-    parser.add_argument("--assume-clean-history", action="store_true",
-                        help="git 不可用时仍放行（仅限离线环境，报告中标注未核验）")
+    parser.add_argument("--assume-unverified", action="store_true",
+                        help="有检查未完成时仍放行（仅限离线环境；结论会标注「未核验」，"
+                             "真实问题不会被放过）")
     parser.add_argument("--forbid-words", default="",
                         help="本队真实姓名/队名，逗号分隔；从仓库外文件读取后传入")
     args = parser.parse_args()
@@ -239,34 +292,30 @@ def main() -> int:
         hist_hits = [h for h in hist_hits if "历史" in h]
         results.append(("密钥（全历史）", hist_hits))
 
-    failed = False
-    git_blocked = False
+    problems: list[str] = []
+    unverified: list[str] = []
     print("公开前自检：")
-    for name, problems in results:
-        hard = [p for p in problems if "历史未核验" in p or "失败" in p]
-        if problems and hard:
-            git_blocked = True
-        if problems:
-            failed = True
-            print(f"  [FAIL] {name}（{len(problems)} 项）")
-            for p in problems[:6]:
-                print(f"         - {p}")
+    for name, items in results:
+        if items:
+            problems.extend(f"{name}：{x}" for x in items)
+            print(f"  [FAIL] {name}（{len(items)} 项）")
+            for x in items[:6]:
+                print(f"         - {x}")
         else:
             print(f"  [OK]   {name}")
 
+    # 「无法验证」单独统计：它不是"没问题"，而是"不知道"。
+    for item in problems:
+        if "失败" in item or "未核验" in item:
+            unverified.append(item)
+
     if args.skip_history:
-        print("  [WARN] 已跳过全历史扫描：**历史未核验**，不能据此断言干净")
+        unverified.append("已跳过全历史扫描：**历史未核验**")
 
-    if git_blocked and args.assume_clean_history:
-        print("\n[WARN] git 扫描失败，但已用 --assume-clean-history 放行：**历史未核验**")
-        failed = False
-
-    if failed:
-        print("\n[FAIL] 存在阻断项，**不要现在转公开**。")
-        return 1
-    print("\n[PASS] 可以转公开。")
-    print("      转公开后本检查失效——仓库已可见，撤回需要 force-push 全部历史，基本不可行。")
-    return 0
+    code, message = decide(problems, unverified, args.assume_unverified)
+    print()
+    print(message)
+    return code
 
 
 if __name__ == "__main__":
