@@ -72,68 +72,72 @@ def sandbox(tmp_path, monkeypatch):
 # ── 密钥 ────────────────────────────────────────────────────
 def test_secret_in_file_is_detected(sandbox):
     (sandbox / "config.md").write_text(f"key = {_sk()}\n", encoding="utf-8")
-    assert cpr.check_secrets(use_history=False), "工作树里的 sk- 密钥没有被检出"
+    assert cpr.check_secrets(use_history=False)[0], "工作树里的 sk- 密钥没有被检出"
 
 
 def test_other_pat_and_aws_key_detected(sandbox):
     (sandbox / "a.md").write_text(_ghp(), encoding="utf-8")
     (sandbox / "b.md").write_text(_aws(), encoding="utf-8")
-    hits = cpr.check_secrets(use_history=False)
+    hits = cpr.check_secrets(use_history=False)[0]
     assert len(hits) >= 2, f"新增的密钥模式没有生效：{hits}"
 
 
 def test_private_key_block_detected(sandbox):
     (sandbox / "id.md").write_text(_pem() + "\nabc\n", encoding="utf-8")
-    assert cpr.check_secrets(use_history=False), "私钥块未被检出"
+    assert cpr.check_secrets(use_history=False)[0], "私钥块未被检出"
 
 
 def test_plaintext_password_detected(sandbox):
     (sandbox / "c.md").write_text(_pwd(), encoding="utf-8")
-    assert cpr.check_secrets(use_history=False), "明文 password 未被检出"
+    assert cpr.check_secrets(use_history=False)[0], "明文 password 未被检出"
 
 
 # ── git 不可用必须阻断（A 指出的第一处假绿）─────────────────
 def test_git_failure_blocks_instead_of_passing(sandbox, monkeypatch):
     """git 扫描失败时**不能**报 PASS —— 旧版在这里返回空字符串导致假绿。"""
     monkeypatch.setattr(cpr, "_git", lambda *a, **k: ("", False))
-    problems = cpr.check_history_binaries()
-    assert problems, "git 失败却返回空问题列表 = 假绿"
-    assert any("历史未核验" in p or "失败" in p for p in problems)
+    problems, unverified = cpr.check_history_binaries()
+    assert not problems, "git 不可用不是「发现二进制」，不该混进真实问题"
+    assert unverified, "git 失败必须进入「未核验」"
+    code, _ = cpr.decide(problems, unverified)
+    assert code == 1, "未核验却放行 = 假绿"
 
 
 def test_tracked_binaries_fail_when_git_unavailable(sandbox, monkeypatch):
     monkeypatch.setattr(cpr, "_git", lambda *a, **k: ("", False))
-    assert cpr.check_tracked_binaries(), "git 不可用时无法确认工作树，必须报问题"
+    problems, unverified = cpr.check_tracked_binaries()
+    assert unverified, "git 不可用时必须标为「未核验」，而不是当作没问题"
+    assert cpr.decide(problems, unverified)[0] == 1
 
 
 # ── 个人信息 ────────────────────────────────────────────────
 def test_personal_label_detected(sandbox):
     (sandbox / "plan.md").write_text(_teacher() + "\n", encoding="utf-8")
-    assert cpr.check_personal_info([]), "指导教师标签未被检出"
+    assert cpr.check_personal_info([])[0], "指导教师标签未被检出"
 
 
 def test_school_label_detected(sandbox):
     (sandbox / "plan.md").write_text(_school() + "\n", encoding="utf-8")
-    assert cpr.check_personal_info([]), "学校标签未被检出"
+    assert cpr.check_personal_info([])[0], "学校标签未被检出"
 
 
 def test_forbid_words_detected(sandbox):
     word = "龙" + "在飞"
     (sandbox / "plan.md").write_text(f"本次由{word}提交\n", encoding="utf-8")
-    assert cpr.check_personal_info([word]), "禁用词（真实队名/姓名）未被检出"
+    assert cpr.check_personal_info([word])[0], "禁用词（真实队名/姓名）未被检出"
 
 
 def test_forbid_word_in_prohibition_sentence_allowed(sandbox):
     """「不写某队名」这类说明句不该被判为泄露。"""
     word = "龙" + "在飞"
     (sandbox / "rule.md").write_text(f"规则：不写{word}等个人信息\n", encoding="utf-8")
-    assert cpr.check_personal_info([word]) == []
+    assert cpr.check_personal_info([word])[0] == []
 
 
 # ── 其他阻断项 ──────────────────────────────────────────────
 def test_license_present_fails(sandbox):
     (sandbox / "LICENSE").write_text("MIT", encoding="utf-8")
-    assert cpr.check_license_absent(), "存在 LICENSE 却没有报错"
+    assert cpr.check_license_absent()[0], "存在 LICENSE 却没有报错"
 
 
 def test_corpus_flag_true_fails(sandbox):
@@ -141,13 +145,13 @@ def test_corpus_flag_true_fails(sandbox):
         "sources:\n  - source_id: kb:x\n    third_party_text_included: true\n",
         encoding="utf-8",
     )
-    assert cpr.check_corpus_flags(), "声明含第三方原文却没有报错"
+    assert cpr.check_corpus_flags()[0], "声明含第三方原文却没有报错"
 
 
 def test_corpus_flag_missing_fails(sandbox):
     (sandbox / "knowledge" / "sources.yaml").write_text(
         "sources:\n  - source_id: kb:x\n", encoding="utf-8")
-    assert cpr.check_corpus_flags(), "缺少 third_party_text_included 声明却没有报错"
+    assert cpr.check_corpus_flags()[0], "缺少 third_party_text_included 声明却没有报错"
 
 
 # ── 真实仓库仍应通过 ────────────────────────────────────────
@@ -156,11 +160,11 @@ def test_real_repo_is_clean():
 
     `check_tracked_binaries()` 允许 `docs/images/`（本项目自己的截图）。
     """
-    assert cpr.check_tracked_binaries() == []
-    assert cpr.check_license_absent() == []
-    assert cpr.check_corpus_flags() == []
-    assert cpr.check_personal_info([]) == [], cpr.check_personal_info([])
-    assert cpr.check_secrets(use_history=False) == [], cpr.check_secrets(use_history=False)
+    assert cpr.check_tracked_binaries()[0] == []
+    assert cpr.check_license_absent()[0] == []
+    assert cpr.check_corpus_flags()[0] == []
+    assert cpr.check_personal_info([])[0] == [], cpr.check_personal_info([])[0]
+    assert cpr.check_secrets(use_history=False)[0] == [], cpr.check_secrets(use_history=False)[0]
 
 # ── A 复审第二轮指出的三处（判定逻辑与日志）────────────────────
 def test_decide_blocks_when_unverified_by_default():
@@ -186,23 +190,26 @@ def test_real_problem_survives_waiver():
 
 
 def test_git_failure_reported_as_unverified():
-    """git 失败必须进入"未核验"，而不是被当成"没问题"。"""
-    monkey = cpr.check_history_binaries()
-    assert monkey == []  # 真实仓库正常
+    """git 失败必须进入「未核验」，而不是被当成「没问题」。"""
+    problems, unverified = cpr.check_history_binaries()
+    assert not problems and not unverified, "真实仓库应干净且可核验"
+
     original = cpr._git
     try:
         cpr._git = lambda *a, **k: ("", False)
-        problems = cpr.check_history_binaries()
+        problems, unverified = cpr.check_history_binaries()
     finally:
         cpr._git = original
-    code, _ = cpr.decide(problems, unverified=problems)
-    assert code == 1
+
+    assert not problems, "git 不可用不是「发现二进制」"
+    assert unverified, "git 失败必须进入「未核验」"
+    assert cpr.decide(problems, unverified)[0] == 1
 
 
 def test_personal_hit_message_does_not_echo_content(sandbox):
     """日志只报规则名，**不得复述命中内容**（A 指出的第三处）。"""
     (sandbox / "plan.md").write_text(_teacher() + "\n", encoding="utf-8")
-    hits = cpr.check_personal_info([])
+    hits = cpr.check_personal_info([])[0]
     assert hits, "应能检出"
     joined = " ".join(hits)
     assert "张三" not in joined, f"日志复述了个人信息：{joined}"
@@ -211,7 +218,7 @@ def test_personal_hit_message_does_not_echo_content(sandbox):
 
 def test_secret_hit_message_does_not_echo_content(sandbox):
     (sandbox / "c.md").write_text(f"key = {_sk()}\n", encoding="utf-8")
-    hits = cpr.check_secrets(use_history=False)
+    hits = cpr.check_secrets(use_history=False)[0]
     assert hits
     joined = " ".join(hits)
     assert "a" * 20 not in joined, f"日志复述了密钥内容：{joined}"

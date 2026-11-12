@@ -77,10 +77,11 @@ def _git(*args: str) -> tuple[str, bool]:
     return (proc.stdout or "", proc.returncode == 0)
 
 
-def check_tracked_binaries() -> list[str]:
+def check_tracked_binaries() -> tuple[list[str], list[str]]:
+    """返回 (真实问题, 未核验)。**git 不可用属于"未核验"，不是"无问题"。**"""
     out, ok = _git("ls-files")
     if not ok:
-        return ["git ls-files 失败：无法确认工作树里是否有二进制文件"]
+        return [], ["工作树二进制检查：git ls-files 不可用，未能完成"]
     bad = []
     for line in out.splitlines():
         if Path(line).suffix.lower() not in BINARY_SUFFIXES:
@@ -88,13 +89,13 @@ def check_tracked_binaries() -> list[str]:
         if line.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES):
             continue
         bad.append(line)
-    return bad
+    return bad, []
 
 
-def check_history_binaries() -> list[str]:
+def check_history_binaries() -> tuple[list[str], list[str]]:
     out, ok = _git("log", "--all", "--diff-filter=AD", "--name-only", "--pretty=format:")
     if not ok:
-        return ["git log 失败：**历史未核验**，不能判定为干净"]
+        return [], ["历史二进制检查：git log 不可用，**历史未核验**"]
     seen = {}
     for line in out.splitlines():
         name = line.strip()
@@ -104,7 +105,7 @@ def check_history_binaries() -> list[str]:
                 and name.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES):
             seen.pop(name, None)
     return sorted(k for k in seen
-                  if not k.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES))
+                  if not k.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES)), []
 
 
 # 规则名：日志里只报"命中了哪条规则"，**绝不复述命中内容**。
@@ -120,24 +121,33 @@ PERSONAL_LABELS = (
 )
 
 
-def _scan_text(text: str) -> list[str]:
-    """返回**规则名**列表，不含任何命中内容。"""
+def _scan_secrets(text: str) -> list[str]:
+    """只找密钥；返回**规则名**，不含任何命中内容。"""
     hits: list[str] = []
     for label, idx in SECRET_LABELS:
         if re.search(SECRET_PATTERNS[idx], text):
             hits.append(f"命中密钥规则「{label}」")
+    return hits
+
+
+# 占位符写法：值里出现这些词说明还没填，不算真实个人信息
+PLACEHOLDER_WORDS = ("按报名", "待填", "待补", "____", "xxx", "某某", "示例", "不写", "不得", "禁止")
+
+
+def _scan_personal(text: str) -> list[str]:
+    """只找个人信息；返回**规则名**，不含命中内容。"""
+    hits: list[str] = []
     for idx, label in enumerate(PERSONAL_LABELS):
-        pattern = PERSONAL_PATTERNS[idx]
-        for m in re.finditer(pattern, text):
+        for m in re.finditer(PERSONAL_PATTERNS[idx], text):
             line = m.group(0)
-            if any(word in line for word in ("不写", "不得", "禁止", "不要", "待补", "示例")):
+            if any(word in line for word in PLACEHOLDER_WORDS):
                 continue
             hits.append(f"命中个人信息规则「{label}」")
             break
     return hits
 
 
-def check_secrets(use_history: bool) -> list[str]:
+def check_secrets(use_history: bool) -> tuple[list[str], list[str]]:
     hits: list[str] = []
 
     for path in ROOT.rglob("*"):
@@ -151,18 +161,19 @@ def check_secrets(use_history: bool) -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        for hit in _scan_text(text):
+        for hit in _scan_secrets(text):
             hits.append(f"{path.relative_to(ROOT)}: {hit}")
 
+    unverified: list[str] = []
     if use_history:
         out, ok = _git("log", "--all", "-p")
         if not ok:
-            hits.append("git log 失败：**历史未核验**，不能判定为干净")
+            unverified.append("历史密钥检查：git log 不可用，**历史未核验**")
         else:
-            for pattern in SECRET_PATTERNS:
-                if re.search(pattern, out):
-                    hits.append(f"历史中出现密钥模式 {pattern}")
-    return hits[:10]
+            for label, idx in SECRET_LABELS:
+                if re.search(SECRET_PATTERNS[idx], out):
+                    hits.append(f"历史中出现密钥规则「{label}」")
+    return hits[:10], unverified
 
 
 # 本脚本自身的路径：它必须写出这些模式串才能做检查，
@@ -170,7 +181,7 @@ def check_secrets(use_history: bool) -> list[str]:
 SELF = Path(__file__).resolve()
 
 
-def check_personal_info(extra_words: list[str]) -> list[str]:
+def check_personal_info(extra_words: list[str]) -> tuple[list[str], list[str]]:
     hits: list[str] = []
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
@@ -183,9 +194,8 @@ def check_personal_info(extra_words: list[str]) -> list[str]:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             continue
-        for hit in _scan_text(text):
-            if "个人信息" in hit:   # 新文案是「命中个人信息规则「…」」
-                hits.append(f"{path.relative_to(ROOT)}: {hit}")
+        for hit in _scan_personal(text):
+            hits.append(f"{path.relative_to(ROOT)}: {hit}")
         for word in extra_words:
             if word and word in text:
                 # 允许出现在"禁止/不写"这类说明句里
@@ -193,23 +203,23 @@ def check_personal_info(extra_words: list[str]) -> list[str]:
                     if word in line and not any(w in line for w in ("不写", "不得", "禁止", "不要")):
                         hits.append(f"{path.relative_to(ROOT)}: 出现禁用词（已隐去）")
                         break
-    return hits[:10]
+    return hits[:10], []
 
 
 def check_personal_extra_placeholder() -> list[str]:
     return []
 
 
-def check_corpus_flags() -> list[str]:
+def check_corpus_flags() -> tuple[list[str], list[str]]:
     import yaml
 
     try:
         src = yaml.safe_load((ROOT / "knowledge/sources.yaml").read_text(encoding="utf-8"))
     except Exception as exc:  # noqa: BLE001
-        return [f"sources.yaml 读取失败：{exc}"]
+        return [], [f"语料授权检查：sources.yaml 读取失败（{type(exc).__name__}）"]
     items = src.get("sources") or src.get("documents") or []
     if not items:
-        return ["sources.yaml 里没有条目"]
+        return ["sources.yaml 里没有条目"], []   # 空清单是真实问题，不是未核验
     problems = []
     for it in items:
         sid = it.get("source_id") or it.get("doc_id") or "?"
@@ -218,14 +228,14 @@ def check_corpus_flags() -> list[str]:
             problems.append(f"{sid}: 未声明 third_party_text_included")
         elif flag is not False:
             problems.append(f"{sid}: third_party_text_included={flag}（应为原创转述=false）")
-    return problems
+    return problems, []
 
 
-def check_license_absent() -> list[str]:
+def check_license_absent() -> tuple[list[str], list[str]]:
     for name in ("LICENSE", "LICENSE.md", "LICENSE.txt", "COPYING"):
         if (ROOT / name).exists():
-            return [f"存在 {name}——本作品未授权他人再分发，公开仓库不应带许可证"]
-    return []
+            return [f"存在 {name}——本作品未授权他人再分发，公开仓库不应带许可证"], []
+    return [], []
 
 
 def decide(problems: list[str], unverified: list[str],
@@ -277,40 +287,43 @@ def main() -> int:
 
     extra = [w.strip() for w in args.forbid_words.replace("，", ",").split(",") if w.strip()]
 
-    results: list[tuple[str, list[str]]] = []
-    results.append(("工作树中的二进制文件", check_tracked_binaries()))
-    if not args.skip_history:
-        results.append(("历史中出现过的二进制文件", check_history_binaries()))
-    results.append(("密钥与个人信息（工作树）", check_secrets(use_history=False)))
-    results.append(("个人信息（含禁用词）", check_personal_info(extra)))
-    results.append(("语料授权字段", check_corpus_flags()))
-    results.append(("LICENSE", check_license_absent()))
+    results: list[tuple[str, list[str], list[str]]] = []
 
-    # 历史扫描单列，便于看清"是失败还是没问题"
+    def add(name: str, pair: tuple[list[str], list[str]]) -> None:
+        found, missing = pair
+        results.append((name, found, missing))
+
+    add("工作树中的二进制文件", check_tracked_binaries())
     if not args.skip_history:
-        hist_hits = check_secrets(use_history=True)
-        hist_hits = [h for h in hist_hits if "历史" in h]
-        results.append(("密钥（全历史）", hist_hits))
+        add("历史中出现过的二进制文件", check_history_binaries())
+    add("密钥与个人信息（工作树）", check_secrets(use_history=False))
+    add("个人信息（含禁用词）", check_personal_info(extra))
+    add("语料授权字段", check_corpus_flags())
+    add("LICENSE", check_license_absent())
+    if not args.skip_history:
+        # 只保留历史部分的命中，避免与工作树扫描重复报同一条
+        found, missing = check_secrets(use_history=True)
+        add("密钥（全历史）", ([h for h in found if h.startswith("历史")], missing))
 
     problems: list[str] = []
     unverified: list[str] = []
     print("公开前自检：")
-    for name, items in results:
-        if items:
-            problems.extend(f"{name}：{x}" for x in items)
-            print(f"  [FAIL] {name}（{len(items)} 项）")
-            for x in items[:6]:
+    for name, found, missing in results:
+        if found:
+            problems.extend(f"{name}：{x}" for x in found)
+            print(f"  [FAIL] {name}（{len(found)} 项）")
+            for x in found[:6]:
+                print(f"         - {x}")
+        elif missing:
+            unverified.extend(f"{name}：{x}" for x in missing)
+            print(f"  [SKIP] {name}（未能完成，**不算通过**）")
+            for x in missing[:6]:
                 print(f"         - {x}")
         else:
             print(f"  [OK]   {name}")
 
-    # 「无法验证」单独统计：它不是"没问题"，而是"不知道"。
-    for item in problems:
-        if "失败" in item or "未核验" in item:
-            unverified.append(item)
-
     if args.skip_history:
-        unverified.append("已跳过全历史扫描：**历史未核验**")
+        unverified.append("已按 --skip-history 跳过全历史扫描：**历史未核验**")
 
     code, message = decide(problems, unverified, args.assume_unverified)
     print()

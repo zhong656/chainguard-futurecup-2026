@@ -19,21 +19,21 @@ import check_public_release as cpr  # noqa: E402
 
 def test_current_repo_has_no_tracked_binaries():
     """当前仓库不应提交任何二进制（PDF/Office/图片）。"""
-    assert cpr.check_tracked_binaries() == []
+    assert cpr.check_tracked_binaries()[0] == []
 
 
 def test_current_repo_has_no_license():
     """未授权再分发——公开仓库不应带许可证文件。"""
-    assert cpr.check_license_absent() == []
+    assert cpr.check_license_absent()[0] == []
 
 
 def test_corpus_declares_no_third_party_text():
     """17 份语料必须逐条声明 third_party_text_included=false。"""
-    assert cpr.check_corpus_flags() == []
+    assert cpr.check_corpus_flags()[0] == []
 
 
 def test_current_repo_has_no_personal_info():
-    assert cpr.check_personal_info([]) == []
+    assert cpr.check_personal_info([])[0] == []
 
 
 def test_secret_pattern_detection_works(tmp_path, monkeypatch):
@@ -41,7 +41,7 @@ def test_secret_pattern_detection_works(tmp_path, monkeypatch):
     fake = tmp_path / "leak.md"
     fake.write_text("key: sk-" + "a" * 24, encoding="utf-8")
     monkeypatch.setattr(cpr, "ROOT", tmp_path)
-    hits = cpr.check_secrets(use_history=False)
+    hits = cpr.check_secrets(use_history=False)[0]
     assert hits, "构造的密钥没有被检测出来"
 
 
