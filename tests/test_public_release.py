@@ -33,7 +33,7 @@ def test_corpus_declares_no_third_party_text():
 
 
 def test_current_repo_has_no_personal_info():
-    assert cpr.check_personal_info() == []
+    assert cpr.check_personal_info([]) == []
 
 
 def test_secret_pattern_detection_works(tmp_path, monkeypatch):

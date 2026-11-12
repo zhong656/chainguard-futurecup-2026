@@ -5,20 +5,24 @@
 作品提交要求提供"评审可复现的代码仓库地址"，私有库评审打不开，
 所以决定**在提交前把仓库转为公开**（2026-11-11 队长决定，方案 A）。
 
-公开是不可逆的（fork 与缓存清不掉），所以公开**之前**必须机器检查一遍，
-而不是靠"我觉得没问题"。
+公开是不可逆的（fork 与缓存清不掉），所以公开**之前**必须机器检查一遍。
 
-检查五项
---------
-1. **第三方原文/二进制**：工作树与**全部历史**里都不得有 PDF / Office / 图片；
-2. **密钥**：全历史不得出现 `sk-` / `ghp_` / `AKIA` 等模式；
-3. **个人信息**：不得出现校名、指导教师、学号等（PPT 封面另按官方要求填写，不入库）；
-4. **语料授权字段**：`sources.yaml` 每条必须声明 `third_party_text_included`，且为 false；
-5. **LICENSE 缺席**：公开仓库不应携带开源许可证（本作品未授权他人再分发）。
+A 在 #84 review 里指出的三处假绿（本版已修）
+--------------------------------------------
+1. **git 不可用时仍报 [PASS]**：旧版 `_git()` 失败返回空字符串，
+   历史扫描"什么都没发现" → 于是判定通过。**"查不到"不等于"没有"。**
+   现在：git 扫描失败 → 直接 **FAIL 阻断**（除非显式 `--assume-clean-history`，
+   且报告里会写清"历史未核验"）。
+2. **密钥模式太少**：旧版只有 4 种（sk-/ghp_/gho_/AKIA）。
+   现在补 `github_pat_`、`xox[baprs]-`、`AIza`、私钥块、明文 `password=`/`token=` 等。
+3. **个人信息模式太窄**：旧版只有"指导教师："与"学号："。
+   现在补 学校/学院/导师/姓名等标签，并支持 `--forbid-words` 传入本队真实姓名
+   （从仓库外的 `团队信息.md` 读，**不写进仓库**）。
 
 用法：
     python scripts/check_public_release.py
-    python scripts/check_public_release.py --skip-history   # 历史扫描很慢，本地快速检查用
+    python scripts/check_public_release.py --skip-history
+    python scripts/check_public_release.py --forbid-words "某队名,某姓名"
 """
 
 from __future__ import annotations
@@ -33,95 +37,171 @@ ROOT = Path(__file__).resolve().parents[1]
 
 BINARY_SUFFIXES = {".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx",
                    ".png", ".jpg", ".jpeg", ".gif", ".zip", ".mp4", ".mov"}
+
+# 例外：`docs/images/` 下是本项目自己界面的截图（方案书需要系统截图）。
+ALLOWED_BINARY_PREFIXES = ("docs/images/",)
+
 SECRET_PATTERNS = (
-    r"sk-[A-Za-z0-9]{20,}",
-    r"ghp_[A-Za-z0-9]{20,}",
-    r"gho_[A-Za-z0-9]{20,}",
-    r"AKIA[0-9A-Z]{16}",
+    r"sk-[A-Za-z0-9]{20,}",              # OpenAI 风格
+    r"ghp_[A-Za-z0-9]{20,}",             # GitHub PAT（经典）
+    r"gho_[A-Za-z0-9]{20,}",             # GitHub OAuth
+    r"github_pat_[A-Za-z0-9_]{20,}",     # GitHub PAT（fine-grained）
+    r"AKIA[0-9A-Z]{16}",                 # AWS Access Key
+    r"xox[baprs]-[A-Za-z0-9-]{10,}",     # Slack
+    r"AIza[0-9A-Za-z_\-]{35}",           # Google API key
+    r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
+    r"(?i)\b(?:password|passwd|secret|token)\s*[:=]\s*['\"][^'\"]{6,}['\"]",
 )
+
 PERSONAL_PATTERNS = (
-    r"指导教师[:：]\s*\S+",
-    r"学号[:：]\s*\d{6,}",
+    r"指导教师\s*[:：]\s*\S+",
+    r"(?:指导)?导师\s*[:：]\s*\S+",
+    r"学号\s*[:：]\s*\d{4,}",
+    r"(?:学校|学院|院系)\s*[:：]\s*\S+",
+    r"演讲人\s*[:：]\s*\S+",
+    r"团队名称\s*[:：]\s*\S+",
 )
 
+TEXT_SUFFIXES = {".py", ".md", ".yml", ".yaml", ".json", ".txt", ".cjs", ".js",
+                 ".html", ".css", ".cfg", ".ini", ".toml", ".sh", ".ps1", ".svg"}
 
-def _git(*args: str) -> str:
-    proc = subprocess.run(["git", *args], cwd=ROOT, check=False,
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                          encoding="utf-8", errors="replace")
-    return proc.stdout if proc.returncode == 0 else ""
+
+def _git(*args: str) -> tuple[str, bool]:
+    """返回 (输出, 是否成功)。**失败必须能被调用方看见**——这是 #84 的核心修复。"""
+    try:
+        proc = subprocess.run(["git", *args], cwd=ROOT, check=False,
+                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                              encoding="utf-8", errors="replace")
+    except OSError:
+        return "", False
+    return (proc.stdout or "", proc.returncode == 0)
 
 
 def check_tracked_binaries() -> list[str]:
+    out, ok = _git("ls-files")
+    if not ok:
+        return ["git ls-files 失败：无法确认工作树里是否有二进制文件"]
     bad = []
-    for line in _git("ls-files").splitlines():
-        if Path(line).suffix.lower() in BINARY_SUFFIXES:
-            bad.append(line)
+    for line in out.splitlines():
+        if Path(line).suffix.lower() not in BINARY_SUFFIXES:
+            continue
+        if line.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES):
+            continue
+        bad.append(line)
     return bad
 
 
 def check_history_binaries() -> list[str]:
-    """历史上删除过的也算——公开后历史同样可见。"""
-    out = _git("log", "--all", "--diff-filter=AD", "--name-only", "--pretty=format:")
+    out, ok = _git("log", "--all", "--diff-filter=AD", "--name-only", "--pretty=format:")
+    if not ok:
+        return ["git log 失败：**历史未核验**，不能判定为干净"]
     seen = {}
     for line in out.splitlines():
         name = line.strip()
         if name and Path(name).suffix.lower() in BINARY_SUFFIXES:
             seen[name] = True
-    return sorted(seen)
+        elif name and Path(name).suffix.lower() in BINARY_SUFFIXES \
+                and name.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES):
+            seen.pop(name, None)
+    return sorted(k for k in seen
+                  if not k.replace("\\", "/").startswith(ALLOWED_BINARY_PREFIXES))
+
+
+def _scan_text(text: str) -> list[str]:
+    hits: list[str] = []
+    for pattern in SECRET_PATTERNS:
+        for m in re.finditer(pattern, text):
+            hits.append(f"密钥模式 {pattern} → {m.group(0)[:14]}…")
+    for pattern in PERSONAL_PATTERNS:
+        for m in re.finditer(pattern, text):
+            line = m.group(0)[:40]
+            if any(word in line for word in ("不写", "不得", "禁止", "不要", "待补", "示例")):
+                continue
+            hits.append(f"个人信息 {line}")
+    return hits
 
 
 def check_secrets(use_history: bool) -> list[str]:
-    hits = []
-    targets = ["."]
-    if use_history:
-        out = _git("log", "--all", "-p")
-    else:
-        out = ""
-        for path in ROOT.rglob("*"):
-            if path.is_file() and ".git" not in path.parts and path.suffix.lower() in {
-                ".py", ".md", ".yml", ".yaml", ".json", ".txt", ".env", ".sh"
-            }:
-                out += path.read_text(encoding="utf-8", errors="replace")
-    for pattern in SECRET_PATTERNS:
-        for m in re.finditer(pattern, out):
-            hits.append(f"{pattern} → {m.group(0)[:12]}…")
-    return hits[:5]
+    hits: list[str] = []
 
-
-def check_personal_info() -> list[str]:
-    hits = []
     for path in ROOT.rglob("*"):
         if not path.is_file() or ".git" in path.parts:
             continue
-        if path.suffix.lower() not in {".md", ".py", ".yaml", ".yml", ".json"}:
+        if path.resolve() == SELF:
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        for line in text.splitlines():
-            # 说明性文字（"不写""不得""禁止"）不算泄露
-            if any(word in line for word in ("不写", "不得", "禁止", "不要", "待补")):
-                continue
-            for pattern in PERSONAL_PATTERNS:
-                if re.search(pattern, line):
-                    hits.append(f"{path.relative_to(ROOT)}: {line.strip()[:50]}")
-    return hits
+        if path.suffix.lower() not in TEXT_SUFFIXES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for hit in _scan_text(text):
+            hits.append(f"{path.relative_to(ROOT)}: {hit}")
+
+    if use_history:
+        out, ok = _git("log", "--all", "-p")
+        if not ok:
+            hits.append("git log 失败：**历史未核验**，不能判定为干净")
+        else:
+            for pattern in SECRET_PATTERNS:
+                if re.search(pattern, out):
+                    hits.append(f"历史中出现密钥模式 {pattern}")
+    return hits[:10]
+
+
+# 本脚本自身的路径：它必须写出这些模式串才能做检查，
+# 所以扫描时跳过自己，否则每次都会命中自己的文档说明（假阳性）。
+SELF = Path(__file__).resolve()
+
+
+def check_personal_info(extra_words: list[str]) -> list[str]:
+    hits: list[str] = []
+    for path in ROOT.rglob("*"):
+        if not path.is_file() or ".git" in path.parts:
+            continue
+        if path.resolve() == SELF:
+            continue
+        if path.suffix.lower() not in TEXT_SUFFIXES:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        for hit in _scan_text(text):
+            if hit.startswith("个人信息"):
+                hits.append(f"{path.relative_to(ROOT)}: {hit}")
+        for word in extra_words:
+            if word and word in text:
+                # 允许出现在"禁止/不写"这类说明句里
+                for line in text.splitlines():
+                    if word in line and not any(w in line for w in ("不写", "不得", "禁止", "不要")):
+                        hits.append(f"{path.relative_to(ROOT)}: 出现禁用词（已隐去）")
+                        break
+    return hits[:10]
+
+
+def check_personal_extra_placeholder() -> list[str]:
+    return []
 
 
 def check_corpus_flags() -> list[str]:
     import yaml
 
-    problems = []
-    src = yaml.safe_load((ROOT / "knowledge/sources.yaml").read_text(encoding="utf-8"))
+    try:
+        src = yaml.safe_load((ROOT / "knowledge/sources.yaml").read_text(encoding="utf-8"))
+    except Exception as exc:  # noqa: BLE001
+        return [f"sources.yaml 读取失败：{exc}"]
     items = src.get("sources") or src.get("documents") or []
     if not items:
         return ["sources.yaml 里没有条目"]
+    problems = []
     for it in items:
         sid = it.get("source_id") or it.get("doc_id") or "?"
         flag = it.get("third_party_text_included")
         if flag is None:
             problems.append(f"{sid}: 未声明 third_party_text_included")
         elif flag is not False:
-            problems.append(f"{sid}: third_party_text_included={flag}（应为本项目原创转述=false）")
+            problems.append(f"{sid}: third_party_text_included={flag}（应为原创转述=false）")
     return problems
 
 
@@ -134,21 +214,38 @@ def check_license_absent() -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="公开仓库前的合规自检")
-    parser.add_argument("--skip-history", action="store_true", help="跳过全历史扫描（较慢）")
+    parser.add_argument("--skip-history", action="store_true",
+                        help="跳过全历史扫描（会显著降低保证强度，报告中标注）")
+    parser.add_argument("--assume-clean-history", action="store_true",
+                        help="git 不可用时仍放行（仅限离线环境，报告中标注未核验）")
+    parser.add_argument("--forbid-words", default="",
+                        help="本队真实姓名/队名，逗号分隔；从仓库外文件读取后传入")
     args = parser.parse_args()
+
+    extra = [w.strip() for w in args.forbid_words.replace("，", ",").split(",") if w.strip()]
 
     results: list[tuple[str, list[str]]] = []
     results.append(("工作树中的二进制文件", check_tracked_binaries()))
     if not args.skip_history:
         results.append(("历史中出现过的二进制文件", check_history_binaries()))
-    results.append(("密钥模式", check_secrets(use_history=not args.skip_history)))
-    results.append(("个人信息", check_personal_info()))
+    results.append(("密钥与个人信息（工作树）", check_secrets(use_history=False)))
+    results.append(("个人信息（含禁用词）", check_personal_info(extra)))
     results.append(("语料授权字段", check_corpus_flags()))
     results.append(("LICENSE", check_license_absent()))
 
+    # 历史扫描单列，便于看清"是失败还是没问题"
+    if not args.skip_history:
+        hist_hits = check_secrets(use_history=True)
+        hist_hits = [h for h in hist_hits if "历史" in h]
+        results.append(("密钥（全历史）", hist_hits))
+
     failed = False
+    git_blocked = False
     print("公开前自检：")
     for name, problems in results:
+        hard = [p for p in problems if "历史未核验" in p or "失败" in p]
+        if problems and hard:
+            git_blocked = True
         if problems:
             failed = True
             print(f"  [FAIL] {name}（{len(problems)} 项）")
@@ -156,6 +253,13 @@ def main() -> int:
                 print(f"         - {p}")
         else:
             print(f"  [OK]   {name}")
+
+    if args.skip_history:
+        print("  [WARN] 已跳过全历史扫描：**历史未核验**，不能据此断言干净")
+
+    if git_blocked and args.assume_clean_history:
+        print("\n[WARN] git 扫描失败，但已用 --assume-clean-history 放行：**历史未核验**")
+        failed = False
 
     if failed:
         print("\n[FAIL] 存在阻断项，**不要现在转公开**。")
