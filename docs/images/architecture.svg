@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="900" viewBox="0 0 1280 900">
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#1b5e8c"/></marker></defs>
+<rect x="0" y="0" width="1280" height="900" rx="0" fill="#ffffff" stroke="none" stroke-width="1.2"/>
+<text x="48" y="52" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="24" font-weight="700" fill="#1f2933" text-anchor="start">链衡 ChainGuard · 系统架构</text>
+<text x="48" y="78" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="13" font-weight="400" fill="#5b6770" text-anchor="start">五层结构 · 11 节点 DAG · 6 类 Agent · 11 份契约冻结</text>
+<rect x="48" y="112" width="132" height="688" rx="10" fill="#f7f4fb" stroke="#7b4fa8" stroke-width="1.2"/>
+<text x="114.0" y="142" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="13" font-weight="700" fill="#7b4fa8" text-anchor="middle">契约 contracts/</text>
+<text x="114.0" y="162" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="middle">11 份 JSON Schema</text>
+<text x="114.0" y="180" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="middle">2026-11-07 冻结</text>
+<text x="114.0" y="196" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10" font-weight="400" fill="#5b6770" text-anchor="middle">tag contracts-v1.0</text>
+<text x="62" y="228" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· agent_spec</text>
+<text x="62" y="248" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· compile_error</text>
+<text x="62" y="268" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· delivery_artifact</text>
+<text x="62" y="288" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· draft</text>
+<text x="62" y="308" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· llm_response</text>
+<text x="62" y="328" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· retrieval_result</text>
+<text x="62" y="348" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· scorecard</text>
+<text x="62" y="368" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· source_ref</text>
+<text x="62" y="388" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· task_state</text>
+<text x="62" y="408" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· trace_event</text>
+<text x="62" y="428" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#1f2933" text-anchor="start">· workflow</text>
+<rect x="208" y="112" width="1024" height="118" rx="10" fill="#eef4fb" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="226" y="138" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">① 接入层</text>
+<text x="301.4" y="138" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="400" fill="#5b6770" text-anchor="start">三种入口，同一套执行链</text>
+<rect x="226" y="148" width="300" height="68" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="238" y="172" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">CLI · src/run.py</text>
+<text x="238" y="192" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">python -m src.run</text>
+<text x="238" y="208" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">零 Key · 一条命令出交付包</text>
+<rect x="538" y="148" width="300" height="76" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="550" y="172" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">HTTP API · src/main.py</text>
+<text x="550" y="192" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">FastAPI · 3 个接口（:8000）</text>
+<text x="550" y="208" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">POST /runs  GET /runs/{run_id}/events</text>
+<text x="550" y="224" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">GET /runs/{run_id}/artifacts</text>
+<rect x="850" y="148" width="300" height="68" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="862" y="172" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">控制台 · web/</text>
+<text x="862" y="192" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">Vue3 构建产物 + Trace 重放（:8766）</text>
+<text x="862" y="208" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">同源代理转发到 API</text>
+<rect x="208" y="246" width="1024" height="128" rx="10" fill="#e9f5ef" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="226" y="272" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">② 编排层</text>
+<text x="301.4" y="272" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="400" fill="#5b6770" text-anchor="start">编译期静态校验 + 运行期调度</text>
+<rect x="226" y="282" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="238" y="306" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">DAG 编译器 · dag_compiler.py</text>
+<text x="238" y="326" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">YAML → 可执行计划</text>
+<text x="238" y="342" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">校验：无环 / 依赖 / 条件 / 并行</text>
+<text x="238" y="358" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">失败走 compile_error 契约</text>
+<rect x="538" y="282" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="550" y="306" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">调度器 · scheduler.py</text>
+<text x="550" y="326" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">并发信号量 · 超时 · 指数退避重试</text>
+<text x="550" y="342" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">降级 → 安全中止（不产出交付包）</text>
+<text x="550" y="358" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">Token 预算护栏</text>
+<rect x="850" y="282" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="862" y="306" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">Loop 控制器 · loop_controller.py</text>
+<text x="862" y="326" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">定向回退：只重跑 write</text>
+<text x="862" y="342" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">回边目标必须是 verify 合法前驱</text>
+<text x="862" y="358" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">≤3 轮 · 连续 2 轮无提升终止</text>
+<rect x="208" y="390" width="1024" height="128" rx="10" fill="#fdf1e3" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="226" y="416" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">③ 执行层</text>
+<text x="301.4" y="416" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="400" fill="#5b6770" text-anchor="start">6 类角色 · 内容指纹热加载</text>
+<rect x="226" y="426" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="238" y="450" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">角色注册表 · agent_registry.py</text>
+<text x="238" y="470" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">agents/*.yaml（6 份）</text>
+<text x="238" y="486" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">SHA256 指纹热加载，改配置不重启</text>
+<text x="238" y="502" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">只读/可写约束强制校验</text>
+<rect x="538" y="426" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="550" y="450" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">知识库 · knowledge_hub.py</text>
+<text x="550" y="470" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">语料 17 份（原创转述卡）</text>
+<text x="550" y="486" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">BM25 + 向量 → RRF k=60</text>
+<text x="550" y="502" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">切片跳过权利声明段</text>
+<rect x="850" y="426" width="300" height="78" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="862" y="450" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">工具与隔离 · sandbox.py / trace.py</text>
+<text x="862" y="470" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">工具白名单 · 只读角色不可写</text>
+<text x="862" y="486" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">trace.jsonl 逐事件落盘</text>
+<text x="862" y="502" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">LLM 适配四档：DeepSeek/Qwen/Ollama/Mock</text>
+<rect x="208" y="534" width="1024" height="118" rx="10" fill="#f3ecfa" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="226" y="560" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">④ 验证层</text>
+<text x="301.4" y="560" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="400" fill="#5b6770" text-anchor="start">L1 确定性 + L2 独立评审；L3 未实现</text>
+<rect x="226" y="564" width="440" height="74" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="238" y="588" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">L1 规则验证 · rule_checker.py</text>
+<text x="238" y="608" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">SCHEMA_INVALID / CITATION_MISSING / CITATION_UNKNOWN</text>
+<text x="238" y="624" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">NUMERIC_MISMATCH / MISSING_SECTION</text>
+<rect x="684" y="564" width="466" height="74" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="696" y="588" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">L2 独立评审 · verifier.py</text>
+<text x="696" y="608" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">温度 0.0 ≠ 撰写 0.3（相同则拒绝启动）</text>
+<text x="696" y="624" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">一票否决：blocker 存在即 fail，无论加权分</text>
+<rect x="208" y="668" width="1024" height="118" rx="10" fill="#eaf3f8" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="226" y="694" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="14" font-weight="700" fill="#1f2933" text-anchor="start">⑤ 产出层</text>
+<text x="301.4" y="694" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="400" fill="#5b6770" text-anchor="start">9 件交付物 + manifest + 逐文件 sha256</text>
+<rect x="226" y="698" width="300" height="74" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="238" y="722" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">纵切 · vertical_slice.py</text>
+<text x="238" y="742" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">一次运行产出 9 件文件</text>
+<text x="238" y="758" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">两张 SVG 图表自研渲染</text>
+<rect x="538" y="698" width="300" height="74" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="550" y="722" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">证据链 · evidence.py</text>
+<text x="550" y="742" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">evidence_refs.json</text>
+<text x="550" y="758" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">文件 / 字符区间 / 原文 / 哈希</text>
+<rect x="850" y="698" width="300" height="74" rx="8" fill="#ffffff" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="862" y="722" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="12.5" font-weight="700" fill="#1f2933" text-anchor="start">反馈库 · feedback.py</text>
+<text x="862" y="742" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">SQLite 幂等写入</text>
+<text x="862" y="758" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="10.5" font-weight="400" fill="#5b6770" text-anchor="start">样本 &lt;30 只报个案，不报比率</text>
+<line x1="1250" y1="168" x2="1250" y2="760" stroke="#1b5e8c" stroke-width="1.4" marker-end="url(#arrow)" stroke-dasharray="6 4"/>
+<text x="1242" y="120" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="700" fill="#1b5e8c" text-anchor="end">请求 →</text>
+<text x="1242" y="790" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="700" fill="#1b5e8c" text-anchor="end">交付包</text>
+<line x1="376" y1="230" x2="376" y2="246" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="376" y1="374" x2="376" y2="390" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="376" y1="518" x2="376" y2="534" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="376" y1="652" x2="376" y2="668" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="688" y1="230" x2="688" y2="246" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="688" y1="374" x2="688" y2="390" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="688" y1="518" x2="688" y2="534" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="688" y1="652" x2="688" y2="668" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1000" y1="230" x2="1000" y2="246" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1000" y1="374" x2="1000" y2="390" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1000" y1="518" x2="1000" y2="534" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<line x1="1000" y1="652" x2="1000" y2="668" stroke="#1b5e8c" stroke-width="1.6" marker-end="url(#arrow)"/>
+<text x="48" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11.5" font-weight="700" fill="#1f2933" text-anchor="start">图例：</text>
+<rect x="100" y="821" width="16" height="12" rx="8" fill="#eef4fb" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="122" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">接入</text>
+<rect x="192" y="821" width="16" height="12" rx="8" fill="#e9f5ef" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="214" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">编排</text>
+<rect x="284" y="821" width="16" height="12" rx="8" fill="#fdf1e3" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="306" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">执行</text>
+<rect x="376" y="821" width="16" height="12" rx="8" fill="#f3ecfa" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="398" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">验证</text>
+<rect x="468" y="821" width="16" height="12" rx="8" fill="#eaf3f8" stroke="#c7d0d8" stroke-width="1.2"/>
+<text x="490" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="start">产出</text>
+<text x="1232" y="832" font-family="Microsoft YaHei, PingFang SC, Noto Sans CJK SC, sans-serif" font-size="11" font-weight="400" fill="#5b6770" text-anchor="end">虚线 = 契约约束贯穿各层；实线 = 执行与数据流</text>
+</svg>
