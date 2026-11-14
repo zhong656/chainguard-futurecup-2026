@@ -5,7 +5,7 @@
 1. 默认三层开关能被正确读出（L1/L2 开，L3 关）；
 2. `llm_judge: false` 时**只跑 L1**，logic 保持 1.0（不臆造分数）；
 3. 危险组合**启动即失败**：`rules: false`（失去四个维度的来源）、
-   `cross_check: true`（L3 未实现，不能"打开后静默忽略"）。
+   `cross_check: true`（L3 已实现；此前未实现时是拒绝启动，防止"打开后被静默忽略"）。
 """
 
 from __future__ import annotations

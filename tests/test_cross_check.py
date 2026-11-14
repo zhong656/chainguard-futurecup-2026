@@ -7,7 +7,7 @@ L3 的主张是：**一条引用如果换条检索路径就找不到，它的支
     2. 只有融合排序才成立的引用 → 报 CROSS_CHECK_MISMATCH（真能抓到）。
 
 另外锁住三条设计边界：
-    - L3 的 issue 是 `major` 不是 `blocker`（不参与一票否决）；
+    - L3 的 issue 是 `warning` 不是 `blocker`（契约只允许这两个值，不参与一票否决）；
     - `cross_check` 维度**不参与加权**（weights 里没有它）；
     - 维度地板（metric_floor）只对加权维度生效，不被 L3 拖累。
 """

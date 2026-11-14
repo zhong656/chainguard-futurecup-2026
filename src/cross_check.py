@@ -25,7 +25,7 @@ L2 用模型看逻辑。两者都**没有回答一个问题**：
 
 严重度
 ------
-`major`（不是 `blocker`）：L3 判断的是"支撑强度"，不是"引用真伪"。
+`warning`（契约里 severity 只有 blocker | warning）：L3 判断的是"支撑强度"，不是"引用真伪"。
 真伪由 L1 管；L3 命中不会一票否决，但会进 issues 供人复核。
 这条边界是有意的——把弱信号当硬结论，比不检查更糟。
 """
@@ -105,7 +105,7 @@ def cross_check(draft: dict, chunks=None, *, top_k: int = 8,
                 continue
             # 字段必须符合 contracts/scorecard.schema.json 的 issues.items：
             # required = section / reason / suggestion / target_node / severity，
-            # severity 只有 blocker | warning —— 所以这里用 warning，不用自造的 major。
+            # severity 只有 blocker | warning —— 所以这里用 warning（契约里没有 major/minor）。
             report.issues.append({
                 "rule_id": "CROSS_CHECK_MISMATCH",
                 "severity": "warning",

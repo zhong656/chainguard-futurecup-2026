@@ -56,8 +56,14 @@ def test_screenshot_links_resolve(text):
 
 
 def test_honest_limitations_present(text):
-    """必须写明 L3 未实现、改述 hit@1 40%、并发压测未做。"""
-    assert "L3" in text and "未实现" in text
+    """必须写明 L3 的实现边界、改述 hit@1 40%、并发压测未做。
+
+    L3 自 2026-11-14 起已实现，但**它只观测不加权**——这句边界同样必须写出来，
+    否则读者会以为它参与总分。
+    """
+    assert "L3" in text
+    assert ("只观测" in text) or ("不加权" in text), "L3 必须写明只观测/不加权"
+    assert "未实现" in text, "仍有未实现的部分（HTTP+SSE / resources / sampling）"
     assert "40%" in text
     assert "并发" in text and "未做" in text
 
