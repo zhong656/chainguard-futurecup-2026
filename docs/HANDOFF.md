@@ -32,7 +32,14 @@
 | 纵切 | **已跑通**：`python -m src.run` → **9 件产物**（solution / evidence_chain / evidence_refs / scorecard / rounds / trace / 2 张 SVG / delivery_artifact）；示例输出包另附包内 README，共 10 项 |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
-| 剩余 | ① **#43 控制台阶段二 + 演示视频**（D，11/18）；② **项目文档按模板重整 + 8 张截图**（全员，11/19）；③ **官方模板未拿到**（A，计划 11/3 那条仍未勾）；④ PPT 制作（D）；⑤ 11/19 用当时 main 重新生成示例输出包与源码包 |
+| 剩余 | ① **#91 / #84 复审**（A）；② **#85 独立复核**（C，已受理）；③ **11/19 重出成片 + 四道门禁 + 转公开 + 打包上传**（B）；④ 官方模板**已拿到**（#75 已关闭，内容见 `docs/官方要求-2026.md`）；⑤ PPT 与演示视频**已交付**（D，见成片目录） |
+
+> **命令前提**（C 在 #85 复核时指出）：
+> - 需要先 `git fetch origin`，否则 `origin/main` 是旧的；
+> - `wc -l` 是 Unix 工具，**Windows 用 Git Bash / WSL**，或改 PowerShell：
+>   `(git ls-tree -r --name-only origin/main).Count`；
+> - `gh pr list` 需要装 GitHub CLI（本机为 `D:\Tools\GitHubCLI\bin\gh.exe`）；
+> - `python scripts/check.py` 需要先装依赖，两条口径（装全依赖 / 未装可选依赖）的 skip 数不同。
 
 ## 二、拉代码之前先看这三条
 
