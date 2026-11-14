@@ -63,7 +63,26 @@ manifest SHA256/字节数校验的 `rounds.json`、`solution.md` 和证据文件
 每事件 0.18 秒；YAML 10 秒、证据链 20 秒。原 R3 故障注入夹具仍供独立验收。
 
 浏览器验收和录制另需 Node、Playwright 与 Edge；不加入 Python 服务的 requirements。
-依次运行 python -m web.capture_round3、node web/verify_console.cjs；
+启动上述两个服务后，浏览器验收可独立留档：
+
+```powershell
+python -m web.capture_round3
+$env:CONSOLE_URL = 'http://127.0.0.1:8766'
+$env:CONSOLE_EVIDENCE_DIR = 'outputs/d-console-acceptance'
+node web/verify_console.cjs
+```
+
+验收会把真实 API 的 SSE 与 artifacts、落盘 Trace 逐条比较，再逐事件拖动进度，
+核对全部 11 节点的 DOM 状态及实际填色、边框颜色，也验证向后拖动可恢复历史状态。
+R3 夹具由受控故障注入的真实纵切生成，检查导入、轮次跳转、单步、完整自动重放；
+这些重放操作若尝试任何网络请求，验收会阻止并判失败。导入后必须清除上一任务的评分、
+正文结果和下载链接。额外 8 种事件的合成夹具仅用于界面着色验收，不能作为真实运行证据。
+
+目录中保留 8 张截图、两份原始 Trace、逐帧 `frame-checks.json` 与汇总
+`browser-report.json`（含源文件 SHA256）。默认目录仍是 `outputs/d-api-evidence`，
+`ROUND3_TRACE` 可指定 R3 夹具路径；建议使用独立目录保留各次验收证据。
+缺少 R3 夹具或任何断言失败都会非零退出，失败运行不会留下旧的通过报告。
+
 新短版录制用 node web/record_demo.cjs，固定 1920×1080。CONSOLE_URL 可覆盖地址。
 
 录制源与 recording.json 默认位于 outputs/d-demo-video-v2/，PPT 与 PDF 位于
