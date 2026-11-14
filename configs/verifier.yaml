@@ -28,7 +28,7 @@
 layers:
   rules: true
   llm_judge: true
-  cross_check: false   # L3 未实现；实现前必须保持 false
+  cross_check: true   # L3 未实现；实现前必须保持 false
 
 # scorecard：评分维度与权重（合计必须为 1.0）
 scorecard:

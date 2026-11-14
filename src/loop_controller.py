@@ -14,6 +14,10 @@ class LoopDecision:
     reason: str = ""
 
 
+# 允许出现在 metrics 里、但不参与加权的额外维度（白名单）
+ALLOWED_EXTRA_METRICS: frozenset[str] = frozenset({"cross_check"})
+
+
 class LoopController:
     """一次运行一个实例；初稿为 round=0，最多追加三轮修订。"""
 
@@ -35,8 +39,16 @@ class LoopController:
             raise ValueError("评分卡 round 与当前轮次不一致")
         weights = self.policy["weights"]
         metrics = scorecard["metrics"]
-        if set(metrics) != set(weights) or "score" not in scorecard:
-            raise ValueError("评分卡必须包含既定五维及总分")
+        # 五维必须全在；**额外维度只允许白名单里的**（L3 的 cross_check）。
+        # 用白名单而不是"放宽为超集"：放宽会让任何拼错的维度名被静默忽略，
+        # 白名单只对明确声明的维度开口子。
+        extra = set(metrics) - set(weights)
+        if set(weights) - set(metrics) or (extra - ALLOWED_EXTRA_METRICS) or "score" not in scorecard:
+            raise ValueError(
+                "评分卡必须包含既定五维及总分"
+                + (f"（额外维度仅允许 {sorted(ALLOWED_EXTRA_METRICS)}，实际多出 {sorted(extra)}）"
+                   if extra - ALLOWED_EXTRA_METRICS else "")
+            )
         score = scorecard["score"]
         if not isfinite(score) or not all(isfinite(value) for value in metrics.values()):
             raise ValueError("评分必须为有限数")

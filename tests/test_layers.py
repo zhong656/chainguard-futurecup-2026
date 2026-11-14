@@ -37,7 +37,9 @@ def test_default_layers_from_config():
     layers = vf._layers()
     assert layers["rules"] is True, "L1 必须默认开启"
     assert layers["llm_judge"] is True, "L2 默认开启"
-    assert layers["cross_check"] is False, "L3 未实现，默认必须是 false"
+    # L3 于 2026-11-14 实现并**默认开启**（配置在 configs/verifier.yaml）。
+    # 默认开是有意的：它是零成本的确定性复核（纯本地检索，不调模型）。
+    assert layers["cross_check"] is True, "L3 已实现，默认开启"
 
 
 def test_llm_judge_off_returns_l1_only(draft):
@@ -62,11 +64,24 @@ def test_rules_cannot_be_disabled():
     assert "rules" in str(exc.value)
 
 
-def test_cross_check_true_fails_loudly():
-    """L3 没实现，配置打开它必须报错，而不是静默忽略。"""
-    with pytest.raises(vf.VerifierConfigError) as exc:
-        vf.Verifier(layers={"rules": True, "llm_judge": True, "cross_check": True})
-    assert "L3" in str(exc.value)
+def test_cross_check_true_is_accepted_after_l3_implemented():
+    """L3 于 2026-11-14 实现（`src/cross_check.py`）。
+
+    旧行为是"配置打开即抛 VerifierConfigError"——那在**未实现**时是对的；
+    实现之后必须能开，否则等于把做好的能力锁死。
+    """
+    v = vf.Verifier(layers={"rules": True, "llm_judge": True, "cross_check": True})
+    assert v.layers["cross_check"] is True
+
+
+def test_cross_check_layer_adds_metric(tmp_path):
+    """打开 L3 后评分卡应出现 cross_check 维度（契约允许额外 0~1 数值）。"""
+    v = vf.Verifier(layers={"rules": True, "llm_judge": True, "cross_check": True})
+    card = v.verify({"run_id": "run-l3", "sections": [
+        {"title": "相机选型", "content": "相机选型需要计算分辨率与视野。",
+         "citations": ["kb:a3_basler_camera_selection"]},
+    ]})
+    assert "cross_check" in card["metrics"]
 
 
 def test_layers_read_from_custom_config(tmp_path):
