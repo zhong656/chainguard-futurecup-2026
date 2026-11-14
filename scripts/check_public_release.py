@@ -11,7 +11,7 @@ A 在 #84 review 里指出的三处假绿（本版已修）
 --------------------------------------------
 1. **git 不可用时仍报 [PASS]**：旧版 `_git()` 失败返回空字符串，
    历史扫描"什么都没发现" → 于是判定通过。**"查不到"不等于"没有"。**
-   现在：git 扫描失败 → 直接 **FAIL 阻断**（除非显式 `--assume-clean-history`，
+   现在：git 扫描失败 → 直接 **FAIL 阻断**（除非显式 `--assume-unverified`，
    且报告里会写清"历史未核验"）。
 2. **密钥模式太少**：旧版只有 4 种（sk-/ghp_/gho_/AKIA）。
    现在补 `github_pat_`、`xox[baprs]-`、`AIza`、私钥块、明文 `password=`/`token=` 等。
@@ -23,6 +23,7 @@ A 在 #84 review 里指出的三处假绿（本版已修）
     python scripts/check_public_release.py
     python scripts/check_public_release.py --skip-history
     python scripts/check_public_release.py --forbid-words "某队名,某姓名"
+    python scripts/check_public_release.py --root <待检目录>     # 供 CLI 负例测试用
 """
 
 from __future__ import annotations
@@ -283,7 +284,14 @@ def main() -> int:
                              "真实问题不会被放过）")
     parser.add_argument("--forbid-words", default="",
                         help="本队真实姓名/队名，逗号分隔；从仓库外文件读取后传入")
+    parser.add_argument("--root", default="",
+                        help="待检查的目录（缺省为仓库根）。CLI 负例测试用，"
+                             "便于对临时目录跑同一套门禁")
     args = parser.parse_args()
+
+    global ROOT
+    if args.root:
+        ROOT = Path(args.root).resolve()
 
     extra = [w.strip() for w in args.forbid_words.replace("，", ",").split(",") if w.strip()]
 

@@ -223,3 +223,67 @@ def test_secret_hit_message_does_not_echo_content(sandbox):
     joined = " ".join(hits)
     assert "a" * 20 not in joined, f"日志复述了密钥内容：{joined}"
     assert "sk- 前缀" in joined
+
+# ── CLI 级负例（A 在 #84 复审里要求：必须调 main() 而不是只测 decide）────
+def _write_sources(root: Path) -> None:
+    (root / "knowledge").mkdir(parents=True, exist_ok=True)
+    (root / "knowledge" / "sources.yaml").write_text(
+        "sources:\n  - source_id: kb:a\n    third_party_text_included: false\n",
+        encoding="utf-8",
+    )
+
+
+def _run_cli(monkeypatch, argv: list[str]) -> int:
+    """真正调用 `main()`，模拟命令行。"""
+    import sys as _sys
+
+    monkeypatch.setattr(_sys, "argv", ["check_public_release.py", *argv])
+    return cpr.main()
+
+
+def test_cli_secret_in_avalanche_named_file_blocks_even_with_waiver(tmp_path, monkeypatch):
+    """A 要求的回归：文件名含「失败/未核验」+ 真密钥 + --assume-unverified → 必须退出 1。
+
+    旧实现按文件名/文案猜分类，这类文件会被当成"未核验"而被豁免放行。
+    """
+    root = tmp_path / "repo"
+    root.mkdir()
+    _write_sources(root)
+    trick = root / "failed_check_未核验.md"
+    # 不要写成「token: <密钥>」——源码里那种字面量本身就会被口令规则命中
+    trick.write_text("value = " + _sk() + "\n", encoding="utf-8")
+
+    code = _run_cli(monkeypatch, [
+        "--root", str(root), "--skip-history", "--assume-unverified",
+    ])
+    assert code == 1, "文件名带「失败/未核验」的真密钥被豁免放行了"
+
+
+def test_cli_license_blocks_despite_waiver(tmp_path, monkeypatch):
+    root = tmp_path / "repo2"
+    root.mkdir()
+    _write_sources(root)
+    (root / "LICENSE").write_text("MIT", encoding="utf-8")
+
+    code = _run_cli(monkeypatch, ["--root", str(root), "--skip-history", "--assume-unverified"])
+    assert code == 1, "真实问题（LICENSE）被豁免参数放过"
+
+
+def test_cli_clean_tree_passes_when_unverified_allowed(tmp_path, monkeypatch):
+    """干净的临时目录 + 允许未核验 → 退出 0（确认 CLI 不是永远失败）。"""
+    root = tmp_path / "repo3"
+    root.mkdir()
+    _write_sources(root)
+
+    code = _run_cli(monkeypatch, ["--root", str(root), "--skip-history", "--assume-unverified"])
+    assert code == 0
+
+
+def test_cli_skip_history_without_waiver_fails(tmp_path, monkeypatch):
+    """跳过历史扫描且不豁免 → 必须退出 1（"未核验"不等于"干净"）。"""
+    root = tmp_path / "repo4"
+    root.mkdir()
+    _write_sources(root)
+
+    code = _run_cli(monkeypatch, ["--root", str(root), "--skip-history"])
+    assert code == 1
