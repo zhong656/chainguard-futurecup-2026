@@ -139,3 +139,41 @@ def test_external_defaults_to_writable_in_bridge(bridge):
     bridge.attach("calc", SERVER)
     spec = external_tools()["mcp:calc:add"]
     assert spec.read_only is False
+
+# ── 超时（A 在 #91 review 里指出：读取没有落实超时）────────────
+SILENT_SERVER = """
+import sys, time
+# 读一行就不回应：模拟卡死的服务器
+sys.stdin.readline()
+time.sleep(30)
+"""
+
+
+def test_read_timeout_raises_instead_of_hanging(tmp_path):
+    """服务器不响应时必须在 timeout 内抛 MCPError，而不是永久阻塞。"""
+    import time
+
+    script = tmp_path / "silent.py"
+    script.write_text(SILENT_SERVER, encoding="utf-8")
+
+    started = time.monotonic()
+    with pytest.raises(MCPError) as exc:
+        with launch(str(script), timeout=1.5) as c:
+            c.list_tools()
+    elapsed = time.monotonic() - started
+
+    assert "超时" in str(exc.value) or "无响应" in str(exc.value)
+    assert elapsed < 10, f"超时没有生效，实际等了 {elapsed:.1f}s"
+
+
+def test_timeout_is_configurable(tmp_path):
+    """timeout 参数应真正生效（不是写死的默认值）。"""
+    import time
+
+    script = tmp_path / "silent2.py"
+    script.write_text(SILENT_SERVER, encoding="utf-8")
+    started = time.monotonic()
+    with pytest.raises(MCPError):
+        with launch(str(script), timeout=0.8) as c:
+            c.list_tools()
+    assert time.monotonic() - started < 5

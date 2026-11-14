@@ -19,6 +19,7 @@
 from __future__ import annotations
 
 import json
+import queue
 import subprocess
 import sys
 import threading
@@ -82,6 +83,9 @@ class MCPClient:
         self.close()
 
     def start(self) -> None:
+        self._lines: queue.Queue[str] = queue.Queue()
+        self._reader: threading.Thread | None = None
+
         self._proc = subprocess.Popen(
             self.command,
             cwd=str(self._cwd),
@@ -93,6 +97,12 @@ class MCPClient:
             errors="replace",
             bufsize=1,
         )
+        # 后台读线程：把 stdout 逐行塞进队列。
+        # 为什么要线程：`stdout.readline()` 是**阻塞**的，服务器卡住就永久挂起，
+        # `self.timeout` 形同虚设（A 在 review 里指出的问题）。
+        self._reader = threading.Thread(target=self._pump, daemon=True)
+        self._reader.start()
+
         result = self._request("initialize", {
             "protocolVersion": PROTOCOL_VERSION,
             "capabilities": {},
@@ -128,10 +138,26 @@ class MCPClient:
         except (BrokenPipeError, OSError) as exc:
             raise MCPError(f"MCP 服务器已断开：{exc}") from exc
 
-    def _readline(self) -> str:
-        if self._proc is None or self._proc.stdout is None:
-            raise MCPError("MCP 客户端未启动")
-        line = self._proc.stdout.readline()
+    def _pump(self) -> None:
+        """后台线程：把服务器 stdout 逐行放进队列；EOF 时放哨兵 None。"""
+        assert self._proc is not None and self._proc.stdout is not None
+        try:
+            for line in self._proc.stdout:
+                self._lines.put(line)
+        except (ValueError, OSError):
+            pass
+        finally:
+            self._lines.put("")  # EOF 哨兵
+
+    def _readline(self, timeout: float | None = None) -> str:
+        """从队列取一行；**超时就抛错**，不阻塞整个调用链。"""
+        limit = self.timeout if timeout is None else timeout
+        try:
+            line = self._lines.get(timeout=limit)
+        except queue.Empty as exc:
+            raise MCPError(
+                f"MCP 服务器 {limit:.1f}s 内无响应（方法超时）"
+            ) from exc
         if not line:
             raise MCPError("MCP 服务器没有返回（进程可能已退出）")
         return line

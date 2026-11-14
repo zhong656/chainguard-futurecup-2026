@@ -145,3 +145,28 @@ def test_scorecard_with_cross_check_validates_against_contract():
         "issues": [], "verdict": "pass",
     }
     validator("scorecard.schema.json").validate(card)
+
+def test_l3_failure_fallback_issue_is_contract_valid(monkeypatch):
+    """L3 抛异常时生成的降级 issue 也必须符合评分卡契约（A 在 #91 指出）。
+
+    旧写法用 `code` / `severity: minor` / `message` —— 契约里没有这些字段，
+    severity 只有 blocker | warning。契约校验会直接拒。
+    """
+    from src import cross_check as cc_mod
+    from scripts._schema import validator
+
+    monkeypatch.setattr(cc_mod, "cross_check",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("索引损坏")))
+
+    card = verifier.Verifier(layers={"rules": True, "llm_judge": True,
+                                     "cross_check": True}).verify(
+        _draft([{"title": "相机选型", "content": "相机选型需要计算分辨率。",
+                 "citations": [RELEVANT]}])
+    )
+    skipped = [i for i in card["issues"] if i.get("rule_id") == "CROSS_CHECK_SKIPPED"]
+    assert skipped, "L3 失败时没有留下降级说明"
+    issue = skipped[0]
+    assert issue["severity"] == "warning"
+    for key in ("section", "reason", "suggestion", "target_node"):
+        assert issue.get(key), f"降级 issue 缺少契约字段 {key}"
+    validator("scorecard.schema.json").validate(card)   # 不抛异常即合法

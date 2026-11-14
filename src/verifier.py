@@ -307,10 +307,18 @@ class Verifier:
                 report = _cc.cross_check(draft)
                 cross = report.to_dict()
             except Exception as exc:  # noqa: BLE001
+                # issue 必须符合 contracts/scorecard.schema.json：
+                # required = section / reason / suggestion / target_node / severity，
+                # severity 只有 blocker | warning（没有 minor）。
                 cross = {"checked": 0, "confirmed": 0, "agreement": 1.0,
-                         "issues": [{"code": "CROSS_CHECK_SKIPPED", "severity": "minor",
-                                     "target_node": "write",
-                                     "message": f"L3 未能执行：{type(exc).__name__}"}]}
+                         "issues": [{
+                             "rule_id": "CROSS_CHECK_SKIPPED",
+                             "severity": "warning",
+                             "target_node": "write",
+                             "section": "（全篇）",
+                             "reason": f"L3 未能执行：{type(exc).__name__}",
+                             "suggestion": "检查语料索引是否可用；L3 是增强层，未执行不代表引用有问题",
+                         }]}
 
         if not self.layers.get("llm_judge", True):
             if cross is None:
