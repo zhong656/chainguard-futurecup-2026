@@ -25,14 +25,21 @@
 
 | 项 | 值 |
 | --- | --- |
-| `main` | **合并前基线 `a93ec62`**（2026-11-09 21:40）；**实时值以 `git rev-parse origin/main` 为准** |
-| 文件数 / 测试 | **178 个文件**（= 打包白名单数，两个口径已对齐）；**303 个测试通过**（2 skipped）——**装全依赖时**；只装 pyyaml/jsonschema/pytest 时 API 与 langgraph/pymupdf 相关用例会 skip（C 环境实测 291 passed / 5 skipped）。**报数必须注明环境** |
+| `main` | **不写固定值**：`git rev-parse --short origin/main`（本文件只留命令，不留数字） |
+| 文件数 / 测试 | **现场查，不写死**：`git ls-tree -r --name-only origin/main | wc -l` 与 `python scripts/check.py`。报数须注明环境——**装全依赖** 与 **未装可选依赖**（httpx/fastapi/uvicorn/pymupdf/docx/langgraph/chromadb）两种口径的 skip 数不同 |
 | `make check` | **PASS**（9 项检查，**0 条 WARN**） |
-| 打开中的 PR | **2**：#77 四档模型路由与降级（A）、#78 控制台真实 API 与录制（D）；实时值用 `gh pr list --state open` 查 |
+| 打开中的 PR | **现场查**：`gh pr list --state open`。（不写死数量——每次合并都会变） |
 | 纵切 | **已跑通**：`python -m src.run` → **9 件产物**（solution / evidence_chain / evidence_refs / scorecard / rounds / trace / 2 张 SVG / delivery_artifact）；示例输出包另附包内 README，共 10 项 |
 | 接线 | **全部接通**：L2 / rounds / 图表 / Scheduler / layers 开关 / 反馈库 |
 | 契约冻结 | **已完成**：tag `contracts-v1.0`（11 份） |
-| 剩余 | ① **#43 控制台阶段二 + 演示视频**（D，11/18）；② **项目文档按模板重整 + 8 张截图**（全员，11/19）；③ **官方模板未拿到**（A，计划 11/3 那条仍未勾）；④ PPT 制作（D）；⑤ 11/19 用当时 main 重新生成示例输出包与源码包 |
+| 剩余 | ① **#91 / #84 复审**（A）；② **#85 独立复核**（C，已受理）；③ **11/19 重出成片 + 四道门禁 + 转公开 + 打包上传**（B）；④ 官方模板**已拿到**（#75 已关闭，内容见 `docs/官方要求-2026.md`）；⑤ PPT 与演示视频**已交付**（D，见成片目录） |
+
+> **命令前提**（C 在 #85 复核时指出）：
+> - 需要先 `git fetch origin`，否则 `origin/main` 是旧的；
+> - `wc -l` 是 Unix 工具，**Windows 用 Git Bash / WSL**，或改 PowerShell：
+>   `(git ls-tree -r --name-only origin/main).Count`；
+> - `gh pr list` 需要装 GitHub CLI（本机为 `D:\Tools\GitHubCLI\bin\gh.exe`）；
+> - `python scripts/check.py` 需要先装依赖，两条口径（装全依赖 / 未装可选依赖）的 skip 数不同。
 
 ## 二、拉代码之前先看这三条
 
