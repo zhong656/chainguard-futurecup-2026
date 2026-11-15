@@ -78,6 +78,21 @@ def _git(*args: str) -> tuple[str, bool]:
     return (proc.stdout or "", proc.returncode == 0)
 
 
+def _read_text(path: Path) -> tuple[str, str | None]:
+    """读取文本；读不出来时返回 (\"\", 错误说明)。
+
+    **不可读是阻断项，不是跳过项**（A 在 #84 复审里指出）：
+    旧实现 `except ...: continue` 会把"读不了"当成"没问题"，
+    一个用了奇怪编码的文件里藏密钥就能整队通过。
+    """
+    try:
+        return path.read_text(encoding="utf-8"), None
+    except UnicodeDecodeError as exc:
+        return "", f"非 UTF-8 编码（{exc.reason}），无法扫描内容"
+    except OSError as exc:
+        return "", f"读取失败（{type(exc).__name__}），无法扫描内容"
+
+
 def check_tracked_binaries() -> tuple[list[str], list[str]]:
     """返回 (真实问题, 未核验)。**git 不可用属于"未核验"，不是"无问题"。**"""
     out, ok = _git("ls-files")
@@ -158,9 +173,9 @@ def check_secrets(use_history: bool) -> tuple[list[str], list[str]]:
             continue
         if path.suffix.lower() not in TEXT_SUFFIXES:
             continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        text, error = _read_text(path)
+        if error is not None:
+            hits.append(f"{path.relative_to(ROOT)}: **无法扫描**——{error}（不可豁免）")
             continue
         for hit in _scan_secrets(text):
             hits.append(f"{path.relative_to(ROOT)}: {hit}")
@@ -191,9 +206,9 @@ def check_personal_info(extra_words: list[str]) -> tuple[list[str], list[str]]:
             continue
         if path.suffix.lower() not in TEXT_SUFFIXES:
             continue
-        try:
-            text = path.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
+        text, error = _read_text(path)
+        if error is not None:
+            hits.append(f"{path.relative_to(ROOT)}: **无法扫描**——{error}（不可豁免）")
             continue
         for hit in _scan_personal(text):
             hits.append(f"{path.relative_to(ROOT)}: {hit}")

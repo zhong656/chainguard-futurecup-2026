@@ -287,3 +287,32 @@ def test_cli_skip_history_without_waiver_fails(tmp_path, monkeypatch):
 
     code = _run_cli(monkeypatch, ["--root", str(root), "--skip-history"])
     assert code == 1
+
+# ── 不可读文件（A 在 #84 复审里指出：except: continue 造成假绿）────
+def _write_undecodable(path: Path) -> None:
+    """写一个不是合法 UTF-8 的文件（模拟 GBK/二进制混入）。"""
+    path.write_bytes(b"\xff\xfe\x00secret-probe\x80\x81" + b"\xc3\x28")
+
+
+def test_unreadable_file_blocks_scan(tmp_path, monkeypatch):
+    """读不出来的文件必须让扫描**阻断**，而不是"跳过它继续 PASS"。"""
+    root = tmp_path / "repo_bin"
+    root.mkdir()
+    _write_sources(root)
+    _write_undecodable(root / "weird.md")
+    monkeypatch.setattr(cpr, "ROOT", root)   # 否则扫的是真实仓库
+
+    problems, _ = cpr.check_secrets(use_history=False)
+    joined = " ".join(problems)
+    assert any("无法扫描" in p for p in problems), f"不可读文件没有进阻断项：{joined}"
+
+
+def test_unreadable_file_blocks_cli_even_with_waiver(tmp_path, monkeypatch):
+    """CLI 级：不可读文件 + --assume-unverified → 仍须 exit 1（不可豁免）。"""
+    root = tmp_path / "repo_bin2"
+    root.mkdir()
+    _write_sources(root)
+    _write_undecodable(root / "notes.md")
+
+    code = _run_cli(monkeypatch, ["--root", str(root), "--skip-history", "--assume-unverified"])
+    assert code == 1, "不可读文件被豁免放行了"
