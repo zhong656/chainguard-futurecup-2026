@@ -58,7 +58,9 @@ class LoopController:
         passed = (
             scorecard["verdict"] == "pass"
             and score >= self.policy["pass_threshold"]
-            and all(value >= veto["metric_floor"] for value in metrics.values())
+            # 地板只作用于**加权维度**：cross_check 这类观测维度不参与，
+        # 否则 cross_check=0.0 会把本来 pass 的一轮判成需要 revise。
+        and all(metrics[k] >= veto["metric_floor"] for k in weights)
             and not any(issue["severity"] == "blocker" for issue in scorecard["issues"])
         )
         if passed:

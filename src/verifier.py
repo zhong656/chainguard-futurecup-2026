@@ -226,7 +226,10 @@ def _merge(l1_card: dict, judgement: L2Judgement, policy: dict,
     metrics["logic"] = judgement.logic
     issues = list(l1_card["issues"]) + list(judgement.issues)
     if cross is not None:
-        metrics["cross_check"] = cross["agreement"]
+        # agreement 为 None 说明 L3 没跑成：**不写这个维度**，只留 warning issue。
+        # 评分卡里出现 cross_check=1.0 却是降级产生的，就是假绿。
+        if cross.get("agreement") is not None:
+            metrics["cross_check"] = cross["agreement"]
         issues.extend(cross["issues"])
     score = round(sum(weights[key] * metrics[key] for key in weights), 3)
     threshold = float(policy["pass_threshold"])
@@ -310,7 +313,9 @@ class Verifier:
                 # issue 必须符合 contracts/scorecard.schema.json：
                 # required = section / reason / suggestion / target_node / severity，
                 # severity 只有 blocker | warning（没有 minor）。
-                cross = {"checked": 0, "confirmed": 0, "agreement": 1.0,
+                # agreement 用 None 表示"没算出来"。绝不能填 1.0——
+                # 那等于把"没检查"说成"全通过"（A 在 #91 复审里指出）。
+                cross = {"checked": 0, "confirmed": 0, "agreement": None,
                          "issues": [{
                              "rule_id": "CROSS_CHECK_SKIPPED",
                              "severity": "warning",
@@ -325,7 +330,10 @@ class Verifier:
                 return l1_card
             # 只开 L1+L3：仍然要把 cross_check 维度并进去
             merged = dict(l1_card)
-            merged["metrics"] = {**l1_card["metrics"], "cross_check": cross["agreement"]}
+            metrics = dict(l1_card["metrics"])
+            if cross.get("agreement") is not None:
+                metrics["cross_check"] = cross["agreement"]
+            merged["metrics"] = metrics
             merged["issues"] = list(l1_card["issues"]) + cross["issues"]
             validator(SCORECARD_SCHEMA).validate(merged)
             return merged

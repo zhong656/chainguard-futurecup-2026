@@ -170,3 +170,48 @@ def test_l3_failure_fallback_issue_is_contract_valid(monkeypatch):
     for key in ("section", "reason", "suggestion", "target_node"):
         assert issue.get(key), f"降级 issue 缺少契约字段 {key}"
     validator("scorecard.schema.json").validate(card)   # 不抛异常即合法
+
+def test_low_cross_check_does_not_trigger_metric_floor():
+    """A 实测：cross_check=0.0 曾把 pass 判成需要 revise。
+
+    地板（metric_floor）只作用于加权维度；cross_check 是观测维度，不该改变判定。
+    """
+    from src.loop_controller import LoopController, ALLOWED_EXTRA_METRICS
+    import yaml, pathlib as _p
+
+    # LoopController 读的是 **scorecard 段**（weights/pass_threshold/veto），
+    # 与 verifier._policy() 的返回形状一致；直接复用同一函数避免两套读法。
+    from src.verifier import _policy
+
+    policy = _policy()
+    graph = type("G", (), {"nodes": {}, "loop": {"max_rounds": 3, "stop_if_no_gain_rounds": 2}})()
+    controller = LoopController.__new__(LoopController)   # 只测地板判定，不建整图
+    controller.policy = policy
+    controller.round = 0
+    controller.best_score = -1.0
+
+    weights = policy["weights"]
+    card = {"run_id": "r", "round": 0, "score": 1.0, "threshold": policy["pass_threshold"],
+            "metrics": {**{k: 1.0 for k in weights}, "cross_check": 0.0},
+            "issues": [], "verdict": "pass"}
+    decision = controller.decide(card)
+    # decide 的通过动作字面量是 "pass"（不是 "accept"）
+    assert decision.action == "pass", (
+        f"cross_check=0 把结果判成了 {decision.action}；"
+        "地板应只作用于加权维度"
+    )
+
+
+def test_l3_failure_does_not_fake_cross_check_metric(monkeypatch):
+    """L3 没跑成时，评分卡里**不能**出现 cross_check=1.0。"""
+    from src import cross_check as cc_mod
+
+    monkeypatch.setattr(cc_mod, "cross_check",
+                        lambda *a, **k: (_ for _ in ()).throw(RuntimeError("索引损坏")))
+    card = verifier.Verifier(layers={"rules": True, "llm_judge": True,
+                                     "cross_check": True}).verify(
+        _draft([{"title": "相机选型", "content": "相机选型需要计算分辨率。",
+                 "citations": [RELEVANT]}])
+    )
+    assert "cross_check" not in card["metrics"], "L3 未执行却写了 cross_check 指标"
+    assert any(i.get("rule_id") == "CROSS_CHECK_SKIPPED" for i in card["issues"])
