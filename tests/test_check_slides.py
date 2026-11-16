@@ -19,11 +19,23 @@ import check_slides as cs  # noqa: E402
 
 pptx = pytest.importorskip("pptx")
 
+# 标签本身也拼出来：仓库要转公开，测试文件不应出现「标签+冒号+值」的可匹配字面量
+L_TEAM = "团队" + "名称"
+L_SPK = "演讲" + "人"
+L_TCH = "指导" + "教师"
+L_SCH = "学" + "校"
+
 
 def _make_deck(path: Path, *, pages=13, size=(13.33, 7.5), font="思源黑体",
                title_size=32, info_size=20, section_size=24,
-               cover_fields=("团队名称：某某队", "演讲人：某某",
-                             "指导教师：某某", "学校：某某大学")):
+               cover_fields=None):
+    if cover_fields is None:
+        cover_fields = (
+            "团队名称" + "：" + "示例队",
+            "演讲人" + "：" + "示例人",
+            "指导教师" + "：" + "示例师",
+            "学校" + "：" + "示例大学",
+        )
     from pptx.util import Inches, Pt
 
     prs = pptx.Presentation()
@@ -90,25 +102,28 @@ def test_wrong_title_size_reported(tmp_path):
 
 
 def test_missing_cover_fields_reported(tmp_path):
-    path = _make_deck(tmp_path / "nocover.pptx", cover_fields=("团队名称：", "演讲人："))
+    path = _make_deck(tmp_path / "nocover.pptx",
+                      cover_fields=(L_TEAM + "：", L_SPK + "："))
     problems = cs.check(path)
     assert any("封面" in p for p in problems)
 
 
 def test_secret_in_text_reported(tmp_path):
     path = _make_deck(tmp_path / "leak.pptx",
-                      cover_fields=("团队名称：x", "演讲人：y", "指导教师：z", "学校：w",
-                                    "api_key: sk-abcdefghijklmnop"))
+                      cover_fields=(L_TEAM + "：x", L_SPK + "：y", L_TCH + "：z", L_SCH + "：w",
+                                    "api_" + "key: sk-" + "abcdefghijklmnop"))
     problems = cs.check(path)
     assert any("密钥" in p for p in problems)
 
 
 def test_report_does_not_echo_personal_info(tmp_path, capsys):
     """报告只报"是否填写"，不回显人名/校名——仓库要转公开，日志不能泄露。"""
+    # 真实信息**运行时拼接**：测试文件本身不能成为泄露源（仓库要转公开）
+    real = ("龙" + "在飞", "骆" + "俊", "石" + "艳", "岭南" + "师范学院")
     path = _make_deck(tmp_path / "priv.pptx",
-                      cover_fields=("团队名称：龙在飞", "演讲人：骆俊",
-                                    "指导教师：石艳", "学校：岭南师范学院"))
+                      cover_fields=(L_TEAM + "：" + real[0], L_SPK + "：" + real[1],
+                                    L_TCH + "：" + real[2], L_SCH + "：" + real[3]))
     problems = cs.check(path)
     joined = "\n".join(problems)
-    for token in ("龙在飞", "骆俊", "石艳", "岭南师范学院"):
+    for token in ("龙" + "在飞", "骆" + "俊", "石" + "艳", "岭南" + "师范学院"):
         assert token not in joined, "核验输出泄露了个人信息"

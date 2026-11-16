@@ -91,3 +91,8 @@ tmp/
 veido/
 frames/
 *.mp4
+
+# 官方赛事材料（模板/通知/赛制说明）与成片：体积大、非源码，一律不入库
+yq/
+*.zip
+!dist/.gitkeep
