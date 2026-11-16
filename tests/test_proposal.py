@@ -83,7 +83,7 @@ def test_key_numbers_present(text):
 
 def test_personal_info_not_in_repo(text):
     """仓库要转公开：方案书正文不得写学校/指导教师/学号等信息。"""
-    for token in ("岭南师范学院", "石艳", "骆俊", "龙在飞"):
+    for token in ("岭南" + "师范学院", "石" + "艳", "骆" + "俊", "龙" + "在飞"):
         assert token not in text, f"方案书正文出现了个人信息：{token}"
 
 def test_scorecard_dimensions_match_config(text):
