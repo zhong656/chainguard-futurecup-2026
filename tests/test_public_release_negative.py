@@ -234,11 +234,20 @@ def _write_sources(root: Path) -> None:
 
 
 def _run_cli(monkeypatch, argv: list[str]) -> int:
-    """真正调用 `main()`，模拟命令行。"""
+    """真正调用 `main()`，模拟命令行。
+
+    `main()` 的 `--root` 会改**模块级 ROOT**，且不会自动恢复。不恢复的话，
+    后续测试（如扫真实仓库的那条）会扫到本用例的临时目录——
+    A 在 #84 批准时指出的测试顺序依赖就是这么来的。
+    """
     import sys as _sys
 
+    saved_root = cpr.ROOT
     monkeypatch.setattr(_sys, "argv", ["check_public_release.py", *argv])
-    return cpr.main()
+    try:
+        return cpr.main()
+    finally:
+        cpr.ROOT = saved_root
 
 
 def test_cli_secret_in_avalanche_named_file_blocks_even_with_waiver(tmp_path, monkeypatch):
