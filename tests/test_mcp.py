@@ -270,3 +270,58 @@ def test_non_object_result_via_with_reaps(tmp_path):
         with launch(str(script), timeout=3.0):
             pass
     assert _count_children("bad_with.py") <= before
+
+# ── 握手必填字段（A 第三轮复现：空版本 / 非对象 serverInfo 竟报告成功）────
+CUSTOM_RESULT_SERVER = """
+import sys, json, time
+line = sys.stdin.readline()
+req = json.loads(line)
+payload = '{"jsonrpc": "2.0", "id": ' + str(req["id"]) + ', "result": HANDMADE_RESULT}'
+sys.stdout.write(payload + "\\n")
+sys.stdout.flush()
+time.sleep(10)
+"""
+
+_GOOD = ('{"protocolVersion": "2024-11-05", "capabilities": {}, '
+         '"serverInfo": {"name": "fake", "version": "1.0"}}')
+
+BAD_HANDSHAKES = {
+    "empty_version": _GOOD.replace('"2024-11-05"', '""'),
+    "unsupported_version": _GOOD.replace('"2024-11-05"', '"2025-06-18"'),
+    "no_version": _GOOD.replace('"protocolVersion": "2024-11-05", ', ""),
+    "no_capabilities": _GOOD.replace('"capabilities": {}, ', ""),
+    "server_info_list": _GOOD.replace('{"name": "fake", "version": "1.0"}', "[]"),
+    "no_server_info": _GOOD.replace(', "serverInfo": {"name": "fake", "version": "1.0"}', ""),
+    "empty_server_name": _GOOD.replace('"name": "fake"', '"name": ""'),
+}
+
+
+@pytest.mark.parametrize("case", sorted(BAD_HANDSHAKES))
+def test_bad_handshake_fields_are_rejected_and_reaped(tmp_path, case):
+    """必填字段缺失/为空/类型错/版本不支持 → 必须报错并回收子进程。
+
+    只查 isinstance 不够：空字符串是合法 str，"什么都没协商成"会被当成成功。
+    """
+    script = tmp_path / f"bad_handshake_{case}.py"
+    script.write_text(
+        CUSTOM_RESULT_SERVER.replace("HANDMADE_RESULT", BAD_HANDSHAKES[case]),
+        encoding="utf-8",
+    )
+
+    client = launch(str(script), timeout=3.0)
+    with pytest.raises(MCPError):
+        client.start()
+
+    assert client._proc is None, f"{case}: 握手被拒后仍持有子进程"
+    assert isinstance(client.last_exit_code, int), f"{case}: 子进程没有回收"
+
+
+def test_good_handshake_still_accepted(tmp_path):
+    """反向保证：合法握手必须照常通过，别把校验写成了"一律拒绝"。"""
+    script = tmp_path / "good_handshake.py"
+    script.write_text(
+        CUSTOM_RESULT_SERVER.replace("HANDMADE_RESULT", _GOOD), encoding="utf-8"
+    )
+    with launch(str(script), timeout=3.0) as client:
+        assert client.protocol_version == "2024-11-05"
+        assert client.server_info.get("name") == "fake"

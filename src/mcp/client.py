@@ -27,6 +27,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 PROTOCOL_VERSION = "2024-11-05"
+# 我们**只实现**这一版协议：服务器回别的版本时不能假装握手成功——
+# 版本不同意味着 capability 与字段语义都可能不同。
+SUPPORTED_PROTOCOL_VERSIONS: frozenset[str] = frozenset({PROTOCOL_VERSION})
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -127,14 +130,38 @@ class MCPClient:
             raise MCPError(
                 f"initialize 返回了非对象结果（{type(result).__name__}），不符合 MCP 协议"
             )
-        protocol_version = result.get("protocolVersion", "")
-        if not isinstance(protocol_version, str):
+        # initialize 的三个字段都是**必填**（MCP 规范 InitializeResult）：
+        # 只查类型不够——空字符串是合法 str，缺字段会拿到默认值，
+        # 两种情况都会让"什么都没协商成"的握手被当成成功（A 在复审里复现）。
+        protocol_version = result.get("protocolVersion")
+        if not isinstance(protocol_version, str) or not protocol_version.strip():
             raise MCPError(
-                f"initialize.protocolVersion 类型错误（{type(protocol_version).__name__}）"
+                f"initialize.protocolVersion 缺失或为空（{type(protocol_version).__name__}），"
+                "无法确认协议版本"
             )
-        server_info = result.get("serverInfo", {})
+        if protocol_version not in SUPPORTED_PROTOCOL_VERSIONS:
+            raise MCPError(
+                f"不支持的协议版本：{protocol_version!r}；"
+                f"本客户端只支持 {sorted(SUPPORTED_PROTOCOL_VERSIONS)}"
+            )
+
+        capabilities = result.get("capabilities")
+        if not isinstance(capabilities, dict):
+            raise MCPError(
+                f"initialize.capabilities 缺失或非对象（{type(capabilities).__name__}）"
+            )
+
+        server_info = result.get("serverInfo")
+        if not isinstance(server_info, dict):
+            raise MCPError(
+                f"initialize.serverInfo 缺失或非对象（{type(server_info).__name__}）"
+            )
+        name = server_info.get("name")
+        if not isinstance(name, str) or not name.strip():
+            raise MCPError("initialize.serverInfo.name 缺失或为空，无法确认对端身份")
+
         self.protocol_version = protocol_version
-        self.server_info = server_info if isinstance(server_info, dict) else {}
+        self.server_info = server_info
         self._notify("notifications/initialized", {})
 
     def close(self) -> None:
