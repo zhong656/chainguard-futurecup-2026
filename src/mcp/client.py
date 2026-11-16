@@ -72,6 +72,7 @@ class MCPClient:
         self._seq = 0
         self.server_info: dict = {}
         self.protocol_version: str = ""
+        self.last_exit_code: int | None = None
         self._cwd = cwd or ROOT
 
     # ── 生命周期 ─────────────────────────────────────────
@@ -103,11 +104,18 @@ class MCPClient:
         self._reader = threading.Thread(target=self._pump, daemon=True)
         self._reader.start()
 
-        result = self._request("initialize", {
-            "protocolVersion": PROTOCOL_VERSION,
-            "capabilities": {},
-            "clientInfo": {"name": "chainguard-mcp-client", "version": "1.0.0"},
-        })
+        # 握手必须在 try 里：`with MCPClient(...)` 的 __enter__ 抛异常时，
+        # Python **不会**调用 __exit__，子进程就会一直挂着（A 在 #91 复审里复现）。
+        # 所以任何启动失败都自己 close() 后再抛。
+        try:
+            result = self._request("initialize", {
+                "protocolVersion": PROTOCOL_VERSION,
+                "capabilities": {},
+                "clientInfo": {"name": "chainguard-mcp-client", "version": "1.0.0"},
+            })
+        except Exception:
+            self.close()
+            raise
         self.protocol_version = result.get("protocolVersion", "")
         self.server_info = result.get("serverInfo", {})
         self._notify("notifications/initialized", {})
@@ -115,17 +123,21 @@ class MCPClient:
     def close(self) -> None:
         if self._proc is None:
             return
+        proc = self._proc
         try:
-            if self._proc.stdin:
-                self._proc.stdin.close()
-            self._proc.terminate()
-            self._proc.wait(timeout=3)
+            if proc.stdin:
+                proc.stdin.close()
+            proc.terminate()
+            proc.wait(timeout=3)
         except (OSError, subprocess.TimeoutExpired):
             try:
-                self._proc.kill()
-            except OSError:
+                proc.kill()
+                proc.wait(timeout=3)
+            except (OSError, subprocess.TimeoutExpired):
                 pass
         finally:
+            # 记下退出码：None 表示"没等到它退出"，供测试与排障断言
+            self.last_exit_code = proc.poll()
             self._proc = None
 
     # ── 协议 ────────────────────────────────────────────

@@ -177,3 +177,53 @@ def test_timeout_is_configurable(tmp_path):
         with launch(str(script), timeout=0.8) as c:
             c.list_tools()
     assert time.monotonic() - started < 5
+
+def test_start_failure_reaps_subprocess(tmp_path):
+    """A 在 #91 复审里复现：握手超时后子进程仍在运行。
+
+    `with MCPClient(...)` 的 __enter__ 抛异常时 Python 不调 __exit__，
+    所以 start() 必须自己 close()。断言"进程真的退出并被回收"，
+    仅断言"抛错 + 耗时"不够。
+    """
+    script = tmp_path / "silent3.py"
+    script.write_text(SILENT_SERVER, encoding="utf-8")
+
+    client = launch(str(script), timeout=0.4)
+    with pytest.raises(MCPError):
+        client.start()
+
+    assert client._proc is None, "启动失败后仍持有 subprocess 句柄"
+    assert client.last_exit_code is not None, "子进程没有被回收（退出码未知）"
+    assert isinstance(client.last_exit_code, int), "退出码应为整数"
+
+
+def test_context_manager_reaps_on_enter_failure(tmp_path):
+    """走文档里的 `with` 用法：即便 __enter__ 抛错，也不能留下孤儿进程。"""
+    import subprocess
+    import sys as _sys
+
+    script = tmp_path / "silent4.py"
+    script.write_text(SILENT_SERVER, encoding="utf-8")
+
+    before = _count_children(script.name)
+    with pytest.raises(MCPError):
+        with launch(str(script), timeout=0.4):
+            pass
+    after = _count_children(script.name)
+
+    assert after <= before, f"with 用法留下了孤儿进程：{before} → {after}"
+
+
+def _count_children(marker: str) -> int:
+    """粗略统计命令行里含 marker 的进程数（跨平台用 tasklist / ps）。"""
+    import subprocess as _sp
+    import sys as _sys
+
+    try:
+        if _sys.platform == "win32":
+            out = _sp.run(["tasklist", "/FO", "CSV"], capture_output=True, text=True, timeout=15).stdout
+        else:
+            out = _sp.run(["ps", "-eo", "args"], capture_output=True, text=True, timeout=15).stdout
+    except (OSError, _sp.SubprocessError):
+        pytest.skip("无法枚举进程")
+    return sum(1 for line in out.splitlines() if marker in line)
