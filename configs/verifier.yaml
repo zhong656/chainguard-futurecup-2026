@@ -45,13 +45,13 @@ scorecard:
   convergence:                     # 收敛判据
     stop_if_no_gain_rounds: 2      # 连续两轮无提升即终止并给出原因
   veto:                            # 一票否决：加权分再高也不能掩盖硬伤
-    metric_floor: 0.60             # 任一维度 < 0.60 → verdict=fail
+    metric_floor: 0.60             # **仅 weights 内**某维 < 0.60 → verdict=fail（观测维度不受此限）
     blocker_issue: true            # 存在 severity=blocker 的 issue → verdict=fail
 
 # 计分口径（LoopController 与 verifier 提示词都按此实现）：
 #   score = Σ weights[k] × metrics[k]，结果保留 3 位小数
 #   verdict = fail 若 score < pass_threshold
-#           或 min(metrics[k]) < veto.metric_floor
+#           或 min(metrics[k] for k in weights) < veto.metric_floor
 #           或 issues 中存在 severity=blocker
 #   例：metrics 0.55/0.85/0.75/0.80/1.00 → score = 0.745 → fail
 #       （见 contracts/examples/scorecard.good.json）

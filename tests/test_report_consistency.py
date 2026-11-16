@@ -60,5 +60,5 @@ def test_paraphrase_group_number_is_not_hidden(report_text, live):
 
 def test_honest_disclosure_kept(report_text):
     """这些"不好看但必须留着"的话不能被删掉。"""
-    for phrase in ("L3", "不代表真实语料"):
+    for phrase in ("L3", "不代表真实语料", "只观测"):
         assert phrase in report_text, f"报告里的诚实声明被删了：{phrase}"
