@@ -227,3 +227,46 @@ def _count_children(marker: str) -> int:
     except (OSError, _sp.SubprocessError):
         pytest.skip("无法枚举进程")
     return sum(1 for line in out.splitlines() if marker in line)
+
+# ── 握手返回非对象结果（A 在 #91 复审里第二次复现）────────────
+# 注意：result 的取值要拼进**JSON 文本**，不能拼进 Python 源码——
+# `null` 在 Python 里不合法，会让服务器起不来，测的就不是客户端行为了。
+BAD_RESULT_SERVER = """
+import sys, json, time
+line = sys.stdin.readline()
+req = json.loads(line)
+payload = '{"jsonrpc": "2.0", "id": ' + str(req["id"]) + ', "result": BAD_RESULT}'
+sys.stdout.write(payload + "\\n")
+sys.stdout.flush()
+time.sleep(10)
+"""
+
+
+@pytest.mark.parametrize("bad", ["[]", '"ok"', "123", "null"])
+def test_non_object_initialize_result_reaps_subprocess(tmp_path, bad):
+    """服务器回 result 非对象 → start() 必须报错**且回收子进程**。
+
+    此前 .get() 抛错发生在 try 之外，异常了但进程还活着。
+    """
+    script = tmp_path / f"bad_{abs(hash(bad))}.py"
+    script.write_text(BAD_RESULT_SERVER.replace("BAD_RESULT", bad), encoding="utf-8")
+
+    client = launch(str(script), timeout=3.0)
+    with pytest.raises(MCPError) as exc:
+        client.start()
+    assert "非对象" in str(exc.value) or "协议" in str(exc.value)
+
+    assert client._proc is None, "握手失败后仍持有 subprocess 句柄"
+    assert isinstance(client.last_exit_code, int), "子进程没有被回收"
+
+
+def test_non_object_result_via_with_reaps(tmp_path):
+    """走 `with` 用法：__enter__ 抛错也必须回收。"""
+    script = tmp_path / "bad_with.py"
+    script.write_text(BAD_RESULT_SERVER.replace("BAD_RESULT", "[]"), encoding="utf-8")
+
+    before = _count_children("bad_with.py")
+    with pytest.raises(MCPError):
+        with launch(str(script), timeout=3.0):
+            pass
+    assert _count_children("bad_with.py") <= before

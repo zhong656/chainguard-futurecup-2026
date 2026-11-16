@@ -104,20 +104,37 @@ class MCPClient:
         self._reader = threading.Thread(target=self._pump, daemon=True)
         self._reader.start()
 
-        # 握手必须在 try 里：`with MCPClient(...)` 的 __enter__ 抛异常时，
-        # Python **不会**调用 __exit__，子进程就会一直挂着（A 在 #91 复审里复现）。
-        # 所以任何启动失败都自己 close() 后再抛。
+        # **整段握手**都必须在 try 里：`with MCPClient(...)` 的 __enter__ 抛异常时，
+        # Python 不会调用 __exit__，子进程会一直挂着（A 在 #91 复审里两次复现：
+        # 先是 initialize 超时，后是 result 非对象时 .get() 抛错——两者都在 try 外）。
+        # 因此从请求到解析到通知，任何一步失败都自己 close() 后再抛。
         try:
-            result = self._request("initialize", {
-                "protocolVersion": PROTOCOL_VERSION,
-                "capabilities": {},
-                "clientInfo": {"name": "chainguard-mcp-client", "version": "1.0.0"},
-            })
+            self._handshake()
         except Exception:
             self.close()
             raise
-        self.protocol_version = result.get("protocolVersion", "")
-        self.server_info = result.get("serverInfo", {})
+
+    def _handshake(self) -> None:
+        """initialize → 解析 → notifications/initialized，任一步失败都算握手失败。"""
+        result = self._request("initialize", {
+            "protocolVersion": PROTOCOL_VERSION,
+            "capabilities": {},
+            "clientInfo": {"name": "chainguard-mcp-client", "version": "1.0.0"},
+        })
+        # 服务器可能返回 result: [] 或 "ok" 这类非对象——此时 .get() 会抛
+        # AttributeError，若不在保护范围内就会泄漏子进程。
+        if not isinstance(result, dict):
+            raise MCPError(
+                f"initialize 返回了非对象结果（{type(result).__name__}），不符合 MCP 协议"
+            )
+        protocol_version = result.get("protocolVersion", "")
+        if not isinstance(protocol_version, str):
+            raise MCPError(
+                f"initialize.protocolVersion 类型错误（{type(protocol_version).__name__}）"
+            )
+        server_info = result.get("serverInfo", {})
+        self.protocol_version = protocol_version
+        self.server_info = server_info if isinstance(server_info, dict) else {}
         self._notify("notifications/initialized", {})
 
     def close(self) -> None:
