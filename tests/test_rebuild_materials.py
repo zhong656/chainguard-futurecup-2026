@@ -46,11 +46,12 @@ def _args(p, *extra):
     ]
 
 
-def _stub_git(monkeypatch, *, head=SHA_A, ref_sha=SHA_A, tracked=None):
+def _stub_git(monkeypatch, *, head=SHA_A, ref_sha=SHA_A, tracked=None, dirty=None):
     tracked = {"src/cross_check.py", "src/mcp/client.py"} if tracked is None else tracked
     monkeypatch.setattr(rb, "resolve_ref_sha", lambda repo, ref: ref_sha)
     monkeypatch.setattr(rb, "worktree_head", lambda repo: head)
     monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: tracked)
+    monkeypatch.setattr(rb, "dirty_worktree_entries", lambda repo: list(dirty or []))
 
 
 # ── 约束 1：查的提交 == 建的提交 ───────────────────────────
@@ -168,6 +169,11 @@ def _prepare_build(monkeypatch, paths):
 
     def fake_run(repo, args):
         calls.append(list(args))
+        if args and args[0] == "-m":                  # 假纵切：造出 9 件产物
+            demo = Path(args[args.index("--output") + 1])
+            demo.mkdir(parents=True, exist_ok=True)
+            for i in range(rb.MIN_ARTIFACTS):
+                (demo / f"f{i}.txt").write_text("x", encoding="utf-8")
         if args and args[0] == "scripts/build_proposal_pdf.py":
             Path(args[args.index("--out") + 1]).write_bytes(b"%PDF-1.4")
         return 0
@@ -186,16 +192,8 @@ def _prepare_build(monkeypatch, paths):
     return calls
 
 
-def _make_demo(paths):
-    demo = paths["out"] / "demo"
-    demo.mkdir(parents=True, exist_ok=True)
-    for i in range(rb.MIN_ARTIFACTS):
-        (demo / f"f{i}.txt").write_text("x", encoding="utf-8")
-
-
 def test_build_runs_video_and_slide_gates(monkeypatch, paths):
     calls = _prepare_build(monkeypatch, paths)
-    _make_demo(paths)
 
     code = rb.main(_args(paths, "--build"))
     assert code == 0
@@ -206,11 +204,15 @@ def test_build_runs_video_and_slide_gates(monkeypatch, paths):
 
 def test_build_fails_when_video_gate_fails(monkeypatch, paths, capsys):
     _prepare_build(monkeypatch, paths)
-    _make_demo(paths)
 
     def failing(repo, args):
         if args and args[0] == "scripts/check_video.py":
             return 1
+        if args and args[0] == "-m":
+            demo = Path(args[args.index("--output") + 1])
+            demo.mkdir(parents=True, exist_ok=True)
+            for i in range(rb.MIN_ARTIFACTS):
+                (demo / f"f{i}.txt").write_text("x", encoding="utf-8")
         if args and args[0] == "scripts/build_proposal_pdf.py":
             Path(args[args.index("--out") + 1]).write_bytes(b"%PDF-1.4")
         return 0
@@ -223,7 +225,6 @@ def test_build_fails_when_video_gate_fails(monkeypatch, paths, capsys):
 def test_summary_records_ref_and_missing(monkeypatch, paths):
     _prepare_build(monkeypatch, paths)
     _stub_git(monkeypatch, tracked=set())
-    _make_demo(paths)
 
     code = rb.main(_args(paths, "--build", "--allow-missing-l3"))
     assert code == 0
@@ -232,3 +233,78 @@ def test_summary_records_ref_and_missing(monkeypatch, paths):
     assert summary["worktree_head"] == SHA_A
     assert summary["allowed_missing"], "显式放行时必须记录缺失项"
     assert summary["video_height"] >= 1080
+
+# ── 新增：未提交改动与旧产物（A 在 #94 第二轮复审指出）────────
+def test_dirty_worktree_blocks_build(monkeypatch, paths, capsys):
+    """HEAD 与 ref 一致也不够——未提交的源码会参与构建。"""
+    _stub_git(monkeypatch, dirty=[" M src/verifier.py"])
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该开始构建"))
+
+    code = rb.main(_args(paths, "--build"))
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "未提交改动" in out
+    assert "src/verifier.py" in out
+
+
+def test_dirty_worktree_only_warns_in_readonly(monkeypatch, paths, capsys):
+    """只读模式不构建，脏工作树只提示，不拦。"""
+    _stub_git(monkeypatch, dirty=[" M src/verifier.py"])
+    code = rb.main(_args(paths))
+    out = capsys.readouterr().out
+    assert code == 0
+    assert "[WARN]" in out
+
+
+def test_dirty_detection_covers_untracked_source_py(monkeypatch, tmp_path):
+    """未跟踪但会被 import 的 .py 也算脏；运行时产物不算。"""
+    repo = tmp_path / "r"
+    repo.mkdir()
+    outputs = {"--untracked-files=no": "", "ls-files --others --exclude-standard":
+               "src/sneaky.py\noutputs/_vertical/a.json\ndocs/notes.md"}
+
+    def fake_git_output(repo_path, *args):
+        key = " ".join(args)
+        return outputs.get(key, "")
+
+    monkeypatch.setattr(rb, "git_output", fake_git_output)
+    entries = rb.dirty_worktree_entries(repo)
+    assert any("sneaky.py" in e for e in entries)
+    assert not any("outputs/" in e for e in entries)
+    assert not any("notes.md" in e for e in entries)
+
+
+def test_nonempty_out_dir_refused(monkeypatch, paths, capsys):
+    """旧输出目录里的文件可能被当成本轮产物——必须拒绝。"""
+    _stub_git(monkeypatch)
+    stale = paths["out"]
+    stale.mkdir()
+    (stale / "demo").mkdir()
+    (stale / "demo" / "old.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该开始构建"))
+
+    code = rb.main(_args(paths, "--build"))
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "非空" in out
+    assert "--force" in out
+
+
+def test_force_clears_out_dir(monkeypatch, paths, capsys):
+    _stub_git(monkeypatch)
+    stale = paths["out"]
+    stale.mkdir()
+    (stale / "old.json").write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)   # 让它在 check 处停下
+
+    code = rb.main(_args(paths, "--build", "--force"))
+    out = capsys.readouterr().out
+    assert "已按 --force 清空" in out
+    assert not (stale / "old.json").exists(), "旧文件必须被清掉"
+
+
+def test_empty_out_dir_allowed(monkeypatch, paths):
+    _stub_git(monkeypatch)
+    paths["out"].mkdir()          # 存在但为空
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)
+    assert rb.main(_args(paths, "--build")) == 3   # 通过了目录检查，停在 check

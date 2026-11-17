@@ -139,6 +139,60 @@ def head_mismatch_message(head: str, ref: str, ref_sha: str) -> str:
     )
 
 
+def dirty_worktree_entries(repo: Path) -> list[str]:
+    """返回**会让构建结果偏离目标提交**的工作树改动。
+
+    两条都算：
+      1. 已跟踪文件被修改（内容与提交不一致）；
+      2. 源码目录里出现未跟踪的 .py（可能被 import 到，改变运行行为）。
+    `outputs/` 之类的运行产物被 .gitignore 忽略，不在其列。
+    """
+    entries: list[str] = []
+    tracked = git_output(repo, "status", "--porcelain", "--untracked-files=no")
+    entries.extend(line.strip() for line in tracked.splitlines() if line.strip())
+
+    untracked = git_output(repo, "ls-files", "--others", "--exclude-standard")
+    code_dirs = ("src/", "scripts/", "mcp_servers/", "tests/")
+    entries.extend(
+        f"?? {name}" for name in untracked.splitlines()
+        if name.strip().endswith(".py") and name.strip().startswith(code_dirs)
+    )
+    return entries
+
+
+def dirty_message(entries: list[str]) -> str:
+    preview = "\n".join(f"    {e}" for e in entries[:8])
+    more = f"\n    …另有 {len(entries) - 8} 项" if len(entries) > 8 else ""
+    return (
+        "工作树有未提交改动，构建会用到它们，产出的材料不能声称来自目标提交。\n"
+        f"{preview}{more}\n"
+        "请先提交或暂存（git stash）后重试。"
+    )
+
+
+def ensure_out_dir_clean(out: Path, *, force: bool) -> list[str]:
+    """输出目录必须是空的；已有内容一律拒绝，除非显式 force。
+
+    否则旧文件会混进本轮产物——产物件数可能被旧文件凑够，
+    目录里也会同时躺着两轮的东西，事后无法判断哪份是本次构建的。
+    返回被清掉的条目（force 时）。
+    """
+    if not out.exists():
+        return []
+    entries = sorted(p.name for p in out.iterdir())
+    if not entries:
+        return []
+    if not force:
+        listing = "、".join(entries[:6]) + ("…" if len(entries) > 6 else "")
+        raise StepError(
+            f"输出目录非空（{len(entries)} 项：{listing}）。\n"
+            "旧文件会被当成本轮产物。请换一个空目录，或加 --force 清空该目录。"
+        )
+    removed = list(entries)
+    shutil.rmtree(out)
+    return removed
+
+
 def measure_pdf(path: Path) -> tuple[int, int]:
     """返回 (页数, 汉字数)。"""
     try:
@@ -188,6 +242,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="真正写文件（会跑 check.py，它会写 outputs/_vertical）")
     ap.add_argument("--allow-missing-l3", action="store_true",
                     help="目标提交没有 L3/MCP 也继续（会记入 summary）")
+    ap.add_argument("--force", action="store_true",
+                    help="输出目录非空时先清空（否则拒绝，避免旧文件混入本轮产物）")
     args = ap.parse_args(argv)
 
     repo = Path(args.repo).resolve()
@@ -217,6 +273,27 @@ def main(argv: list[str] | None = None) -> int:
         print(f"  [WARN] 缺少 {', '.join(missing)}，已显式 --allow-missing-l3，按旧口径继续")
     else:
         print("  [OK] 目标提交已含 L3 与 MCP")
+
+    # HEAD 一致还不够：未提交的源码同样会参与构建
+    try:
+        dirty = dirty_worktree_entries(repo)
+    except StepError as exc:
+        print(f"  [FAIL] {exc}")
+        return 1
+    if dirty and args.build:
+        print(f"  [FAIL] {dirty_message(dirty)}")
+        return 1
+    if dirty:
+        print(f"  [WARN] 工作树有 {len(dirty)} 项未提交改动；--build 前必须先处理")
+
+    if args.build:
+        try:
+            removed = ensure_out_dir_clean(out, force=args.force)
+        except StepError as exc:
+            print(f"  [FAIL] {exc}")
+            return 1
+        if removed:
+            print(f"  [OK] 已按 --force 清空输出目录（移除 {len(removed)} 项旧文件）")
 
     zip_path = materials / "D组成果交付包_20261112.zip"
     ppt = materials / "路演PPT_v10.pptx"
