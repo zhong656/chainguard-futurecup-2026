@@ -1,14 +1,10 @@
 """`scripts/rebuild_materials.py` 的测试（Owner: B）。
 
-这个脚本的核心价值是**一条硬门禁**：
-目标 ref 上没有 L3/MCP 的代码时，拒绝用新口径出材料。
+三条设计约束各对应一组测试（A 在 #94 复审时逐条指出）：
 
-所以测试的重点不是"能不能跑完"，而是：
-    1. 缺代码时必须退出 1，且提示口径；
-    2. 显式 `--allow-missing-l3` 时才放行，且记录下来；
-    3. 路径全部来自参数，不依赖硬编码的机器路径；
-    4. 视频必须取 zip 内最大的那个（避开微信压缩版）；
-    5. 验证模式**不写任何文件**。
+1. **查的和建的是同一个提交**：工作树 HEAD ≠ 目标 ref 时必须拒绝；
+2. **"只读验证"必须真的只读**：默认模式不跑 `check.py`（它会写 outputs/_vertical）；
+3. **视频按分辨率挑且复制后过门禁**：体积靠不住；复制后要跑 check_video / check_slides。
 """
 
 from __future__ import annotations
@@ -25,143 +21,160 @@ sys.path.insert(0, str(ROOT))
 
 from scripts import rebuild_materials as rb  # noqa: E402
 
-
-# ── 纯逻辑 ───────────────────────────────────────────────
-def test_missing_on_ref_detects_each_required_file():
-    assert rb.missing_on_ref(set()) == list(rb.REQUIRED_ON_MAIN)
-    have = {"src/cross_check.py"}
-    assert rb.missing_on_ref(have) == ["src/mcp/client.py"]
+SHA_A = "a" * 40
+SHA_B = "b" * 40
 
 
-def test_guard_message_mentions_fallback_wording():
-    """拒绝时的提示必须点明降级口径，否则看日志的人不知道该写什么。"""
-    msg = rb.guard_message(["src/cross_check.py"])
-    assert "src/cross_check.py" in msg
-    assert "L2" in msg and "MCP" in msg
-    assert "--allow-missing-l3" in msg
-
-
-# ── 门禁行为（替换掉 git 与子进程，保持离线可测）────────────
 @pytest.fixture()
-def no_files(tmp_path):
-    """所有路径都在 tmp 下，不碰真实仓库。"""
-    return {
-        "repo": tmp_path / "repo",
-        "materials": tmp_path / "materials",
-        "out": tmp_path / "out",
-    }
+def paths(tmp_path):
+    repo = tmp_path / "repo"
+    materials = tmp_path / "materials"
+    out = tmp_path / "out"
+    repo.mkdir()
+    materials.mkdir()
+    (materials / "D组成果交付包_20261112.zip").write_bytes(b"PK")
+    (materials / "路演PPT_v10.pptx").write_bytes(b"PK")
+    return {"repo": repo, "materials": materials, "out": out}
 
 
-def _args(paths, *extra):
+def _args(p, *extra):
     return [
-        "--repo", str(paths["repo"]),
-        "--materials", str(paths["materials"]),
-        "--out", str(paths["out"]),
+        "--repo", str(p["repo"]),
+        "--materials", str(p["materials"]),
+        "--out", str(p["out"]),
         *extra,
     ]
 
 
-def test_refuses_when_l3_missing(monkeypatch, no_files, capsys):
-    monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: {"README.md"})
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该跑 check"))
+def _stub_git(monkeypatch, *, head=SHA_A, ref_sha=SHA_A, tracked=None):
+    tracked = {"src/cross_check.py", "src/mcp/client.py"} if tracked is None else tracked
+    monkeypatch.setattr(rb, "resolve_ref_sha", lambda repo, ref: ref_sha)
+    monkeypatch.setattr(rb, "worktree_head", lambda repo: head)
+    monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: tracked)
 
-    code = rb.main(_args(no_files))
+
+# ── 约束 1：查的提交 == 建的提交 ───────────────────────────
+def test_head_mismatch_refused(monkeypatch, paths, capsys):
+    _stub_git(monkeypatch, head=SHA_A, ref_sha=SHA_B)
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该往下跑"))
+
+    code = rb.main(_args(paths))
     out = capsys.readouterr().out
     assert code == 1
-    assert "尚未合入" in out or "缺少" in out
+    assert "不是同一个提交" in out
+    assert "git checkout" in out
 
 
-def test_allow_missing_flag_proceeds(monkeypatch, no_files, capsys):
-    monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: {"README.md"})
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: 0)
+def test_head_mismatch_message_names_both_commits():
+    msg = rb.head_mismatch_message(SHA_A, "origin/main", SHA_B)
+    assert SHA_A[:7] in msg and SHA_B[:7] in msg
 
-    code = rb.main(_args(no_files, "--allow-missing-l3"))
+
+def test_same_head_proceeds(monkeypatch, paths, capsys):
+    _stub_git(monkeypatch)
+    code = rb.main(_args(paths))
+    assert code == 0
+    assert "目标提交" in capsys.readouterr().out
+
+
+# ── 约束 2：默认模式真的只读 ─────────────────────────────
+def test_default_mode_does_not_run_check(monkeypatch, paths, capsys):
+    """默认模式不得运行 check.py（它会写 outputs/_vertical）。"""
+    _stub_git(monkeypatch)
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("只读模式不该跑任何子脚本"))
+
+    code = rb.main(_args(paths))
     out = capsys.readouterr().out
     assert code == 0
-    assert "[WARN]" in out
+    assert "只读预检结束" in out
+    assert not paths["out"].exists(), "只读模式不得创建输出目录"
 
 
-def test_verify_mode_writes_nothing(monkeypatch, no_files, capsys):
-    tracked = {"src/cross_check.py", "src/mcp/client.py"}
-    monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: tracked)
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: 0)
-
-    code = rb.main(_args(no_files))
-    assert code == 0
-    assert not no_files["out"].exists(), "验证模式不该创建输出目录"
-
-
-def test_check_failure_stops(monkeypatch, no_files):
-    tracked = {"src/cross_check.py", "src/mcp/client.py"}
-    monkeypatch.setattr(rb, "git_tracked_files", lambda repo, ref: tracked)
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)
-
-    assert rb.main(_args(no_files, "--build")) == 3
+# ── 门禁：目标提交缺文件 ─────────────────────────────────
+def test_refuses_when_l3_missing(monkeypatch, paths, capsys):
+    _stub_git(monkeypatch, tracked={"README.md"})
+    code = rb.main(_args(paths))
+    out = capsys.readouterr().out
+    assert code == 1
+    assert "L2" in out and "MCP" in out
 
 
-def test_git_failure_is_reported_not_crash(monkeypatch, no_files, capsys):
+def test_allow_missing_flag_proceeds(monkeypatch, paths, capsys):
+    _stub_git(monkeypatch, tracked={"README.md"})
+    assert rb.main(_args(paths, "--allow-missing-l3")) == 0
+    assert "[WARN]" in capsys.readouterr().out
+
+
+def test_missing_on_ref_lists_each_file():
+    assert rb.missing_on_ref(set()) == list(rb.REQUIRED_ON_REF)
+    assert rb.missing_on_ref({"src/cross_check.py"}) == ["src/mcp/client.py"]
+
+
+def test_git_failure_reported(monkeypatch, paths, capsys):
     def boom(repo, ref):
         raise rb.StepError("无法读取 origin/main")
 
-    monkeypatch.setattr(rb, "git_tracked_files", boom)
-    code = rb.main(_args(no_files))
-    assert code == 1
+    monkeypatch.setattr(rb, "resolve_ref_sha", boom)
+    assert rb.main(_args(paths)) == 1
     assert "无法读取" in capsys.readouterr().out
 
 
-# ── 路径参数化 ────────────────────────────────────────────
-def test_paths_come_from_arguments(monkeypatch, tmp_path, capsys):
-    """仓库/成片/输出三处路径都必须来自参数，不能有硬编码。"""
-    repo = tmp_path / "myrepo"
-    materials = tmp_path / "mats"
-    out = tmp_path / "dest"
-    repo.mkdir()
-    materials.mkdir()
-
-    monkeypatch.setattr(rb, "git_tracked_files",
-                        lambda r, ref: {"src/cross_check.py", "src/mcp/client.py"})
-    seen = {}
-
-    def fake_run(r, args):
-        seen["repo"] = r
-        return 0
-
-    monkeypatch.setattr(rb, "run_python", fake_run)
-    code = rb.main(["--repo", str(repo), "--materials", str(materials), "--out", str(out)])
-    assert code == 0
-    assert Path(seen["repo"]) == repo
-
-
-# ── 视频挑选 ─────────────────────────────────────────────
-def test_pick_video_prefers_largest(tmp_path):
-    """zip 里若有多个 mp4，取体积最大的（压缩版通常更小）。"""
+# ── 约束 3：视频按分辨率挑 ───────────────────────────────
+def test_pick_video_uses_height_not_size(tmp_path, monkeypatch):
+    """压缩版可能更大：体积大 ≠ 分辨率高。必须按 ffprobe 高度挑。"""
     zpath = tmp_path / "pkg.zip"
     with zipfile.ZipFile(zpath, "w") as zf:
-        zf.writestr("演示视频_v2.mp4", b"x" * 5000)     # 1080p 版
-        zf.writestr("微信压缩版.mp4", b"x" * 100)       # 544p 版
+        zf.writestr("压缩版.mp4", b"x" * 9000)     # 体积大，但只有 544p
+        zf.writestr("原版.mp4", b"x" * 1000)       # 体积小，但 1080p
+
+    heights = {"压缩版.mp4": 544, "原版.mp4": 1080}
+    monkeypatch.setattr(rb, "probe_height", lambda p: heights[p.name])
+
     picked = rb.pick_video(zpath, tmp_path / "v")
-    assert picked.name == "演示视频_v2.mp4"
+    assert picked.name == "原版.mp4"
 
 
-def test_pick_video_errors_when_zip_missing(tmp_path):
+def test_pick_video_rejects_when_none_reach_1080(tmp_path, monkeypatch):
+    zpath = tmp_path / "pkg.zip"
+    with zipfile.ZipFile(zpath, "w") as zf:
+        zf.writestr("a.mp4", b"x")
+    monkeypatch.setattr(rb, "probe_height", lambda p: 544)
+
+    with pytest.raises(rb.StepError) as exc:
+        rb.pick_video(zpath, tmp_path / "v")
+    assert "544p" in str(exc.value), "报错应列出候选分辨率，便于排查"
+
+
+def test_pick_video_missing_zip(tmp_path):
     with pytest.raises(rb.StepError):
         rb.pick_video(tmp_path / "nope.zip", tmp_path / "v")
 
 
-def test_pick_video_errors_when_no_mp4(tmp_path):
-    zpath = tmp_path / "pkg.zip"
-    with zipfile.ZipFile(zpath, "w") as zf:
-        zf.writestr("readme.txt", "x")
+def test_probe_height_errors_are_wrapped(monkeypatch):
+    class R:
+        returncode = 1
+        stdout = ""
+        stderr = "boom"
+
+    monkeypatch.setattr(rb.subprocess, "run", lambda *a, **k: R())
     with pytest.raises(rb.StepError):
-        rb.pick_video(zpath, tmp_path / "v")
+        rb.probe_height(Path("x.mp4"))
 
 
-# ── 记录 ────────────────────────────────────────────────
-def test_summary_records_allowed_missing(monkeypatch, no_files, tmp_path):
-    """显式放行时必须把"缺了什么"写进 summary，不能悄悄放过。"""
-    monkeypatch.setattr(rb, "git_tracked_files", lambda r, ref: set())
-    monkeypatch.setattr(rb, "run_python", lambda r, args: 0)
-    monkeypatch.setattr(rb, "measure_pdf", lambda p: (10, 6000))
+# ── 构建路径：复制后必须过门禁 ───────────────────────────
+def _prepare_build(monkeypatch, paths):
+    _stub_git(monkeypatch)
+    calls: list[list[str]] = []
+
+    def fake_run(repo, args):
+        calls.append(list(args))
+        if args and args[0] == "scripts/build_proposal_pdf.py":
+            Path(args[args.index("--out") + 1]).write_bytes(b"%PDF-1.4")
+        return 0
+
+    monkeypatch.setattr(rb, "run_python", fake_run)
+    monkeypatch.setattr(rb, "measure_pdf", lambda p: (18, 6000))
+    monkeypatch.setattr(rb, "probe_height", lambda p: 1080)
 
     def fake_pick(zip_path, dest):
         dest.mkdir(parents=True, exist_ok=True)
@@ -170,23 +183,52 @@ def test_summary_records_allowed_missing(monkeypatch, no_files, tmp_path):
         return f
 
     monkeypatch.setattr(rb, "pick_video", fake_pick)
+    return calls
 
-    out = no_files["out"]
-    demo = out / "demo"
+
+def _make_demo(paths):
+    demo = paths["out"] / "demo"
     demo.mkdir(parents=True, exist_ok=True)
     for i in range(rb.MIN_ARTIFACTS):
         (demo / f"f{i}.txt").write_text("x", encoding="utf-8")
 
-    def fake_run_py(repo, args):
-        if "--out" in args:                      # build_proposal_pdf
+
+def test_build_runs_video_and_slide_gates(monkeypatch, paths):
+    calls = _prepare_build(monkeypatch, paths)
+    _make_demo(paths)
+
+    code = rb.main(_args(paths, "--build"))
+    assert code == 0
+    joined = [" ".join(c) for c in calls]
+    assert any("check_video.py" in c for c in joined), "复制后必须跑视频门禁"
+    assert any("check_slides.py" in c for c in joined), "复制后必须跑 PPT 门禁"
+
+
+def test_build_fails_when_video_gate_fails(monkeypatch, paths, capsys):
+    _prepare_build(monkeypatch, paths)
+    _make_demo(paths)
+
+    def failing(repo, args):
+        if args and args[0] == "scripts/check_video.py":
+            return 1
+        if args and args[0] == "scripts/build_proposal_pdf.py":
             Path(args[args.index("--out") + 1]).write_bytes(b"%PDF-1.4")
         return 0
 
-    monkeypatch.setattr(rb, "run_python", fake_run_py)
-    no_files["materials"].mkdir(parents=True, exist_ok=True)
-    (no_files["materials"] / "路演PPT_v10.pptx").write_bytes(b"x")
+    monkeypatch.setattr(rb, "run_python", failing)
+    assert rb.main(_args(paths, "--build")) == 1
+    assert "视频未通过" in capsys.readouterr().out
 
-    code = rb.main(_args(no_files, "--build", "--allow-missing-l3"))
+
+def test_summary_records_ref_and_missing(monkeypatch, paths):
+    _prepare_build(monkeypatch, paths)
+    _stub_git(monkeypatch, tracked=set())
+    _make_demo(paths)
+
+    code = rb.main(_args(paths, "--build", "--allow-missing-l3"))
     assert code == 0
-    summary = json.loads((out / "rebuild-summary.json").read_text(encoding="utf-8"))
-    assert summary["allowed_missing"], "显式放行时 summary 必须记录缺失项"
+    summary = json.loads((paths["out"] / "rebuild-summary.json").read_text(encoding="utf-8"))
+    assert summary["ref_sha"] == SHA_A
+    assert summary["worktree_head"] == SHA_A
+    assert summary["allowed_missing"], "显式放行时必须记录缺失项"
+    assert summary["video_height"] >= 1080
