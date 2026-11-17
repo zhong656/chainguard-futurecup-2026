@@ -17,3 +17,16 @@
 - **影响面**：仅 description 文本与文档；pattern 未变（^[a-z]+:[A-Za-z0-9_-]+$ 本就允许任意小写命名空间），正反例不受影响。
 - **不涉及**：字段增减、必填项、跨契约引用。
 - **时间**：11-07 22:00 冻结前完成，属于冻结前变更。
+
+## 2026-11-16 · layers.cross_check 由「开启即报错」变为「开启即运行」（B）
+
+- **变更类型**：行为变更（非契约字段变更）——`configs/verifier.yaml` 的 `layers.cross_check`
+  此前设为 `true` 会抛 `VerifierConfigError`（因为 L3 未实现），现改为正常执行双路复核。
+- **为什么不算改契约**：`contracts/scorecard.schema.json` 的 `metrics` 允许任意 0~1 数值字段，
+  L3 只追加 `cross_check` 观测维度；五维权重（0.30/0.20/0.20/0.20/0.10）、
+  `pass_threshold` 0.85、`metric_floor` 0.60 **均未改动**。
+- **影响面**：`src/cross_check.py`（新增）、`src/verifier.py`、`src/loop_controller.py`
+  （额外维度白名单 + 地板只看加权维度）、`configs/verifier.yaml`（默认开启）。
+- **口径**：`cross_check` 只观测——不进 weights、不参与一票否决、不受 metric_floor 约束；
+  L3 未执行导致 `agreement` 为 `None` 时**不写该维度**（避免"没检查"被读成"全通过"）。
+- **合入前提**：PR #91。**未合入前，对外口径一律为「L2 两层验证」。**

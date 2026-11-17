@@ -7,7 +7,7 @@
 
 另外锁两条"材料纪律"：
     4. 每页都标了证据来源（没有证据的页不该上）；
-    5. 边界页必须还在（L3 未实现 / 改述 40% / Mock 的 L2 是启发式）。
+    5. 边界页必须还在（L3 只观测不加权 / 改述 40% / Mock 的 L2 是启发式）。
 """
 
 from __future__ import annotations
@@ -69,10 +69,15 @@ def test_each_content_page_declares_evidence(text, pages):
 
 
 def test_boundary_page_kept(text):
-    """边界页是最好的防守，不能被删。"""
+    """边界页是最好的防守，不能被删。
+
+    L3 自 2026-11-14 已实现，所以"未实现"不再适用；改为要求写清它的
+    **观测边界**（只观测/不加权），其余两条（改述 40%、启发式 L2）不变。
+    """
     assert "边界与已知限制" in text
-    for phrase in ("未实现", "40%", "启发式"):
+    for phrase in ("40%", "启发式"):
         assert phrase in text, f"边界页缺少诚实声明：{phrase}"
+    assert ("只观测" in text) or ("不加权" in text), "边界页必须写清 L3 只观测/不加权"
 
 
 def test_no_fabricated_screenshots_claim(text):

@@ -108,19 +108,14 @@ def check_layers(layers: dict) -> None:
     两条必须挡住的情况：
     1. `rules: false` —— L1 是确定性兜底，其余四个维度都依赖它；关掉后评分卡
        只能凭空填分，比不开验证更危险。
-    2. `cross_check: true` —— L3 尚未实现。让它"打开"后被静默忽略，等于对外
-       宣称了做不到的能力；宁可启动失败，也不要假装做了。
+    2. `cross_check: true` —— 2026-11-14 起已实现（双路检索比对），不再拦截。
     """
     if not layers.get("rules", True):
         raise VerifierConfigError(
             "layers.rules 不能关闭：L1 是确定性兜底，关闭后 citation/consistency/"
             "coverage/format 四个维度失去数据来源，评分卡只能凭空填分"
         )
-    if layers.get("cross_check", False):
-        raise VerifierConfigError(
-            "layers.cross_check 已设为 true，但 L3（双路检索比对）尚未实现。"
-            "请在实现后再打开——不能让未实现的层被配置打开后静默忽略"
-        )
+    # L3（cross_check）已于 2026-11-14 实现，见 src/cross_check.py；不再拦截
 
 
 def _bigrams(text: str) -> set[str]:
@@ -219,18 +214,29 @@ def _mock_judge(draft: dict, index: EvidenceIndex) -> tuple[float, list[dict]]:
     return round(max(0.0, 1.0 - penalty), 3), issues
 
 
-def _merge(l1_card: dict, judgement: L2Judgement, policy: dict) -> dict:
-    """把 L2 判定并进 L1 评分卡，按同一套权重与一票否决重算结论。"""
+def _merge(l1_card: dict, judgement: L2Judgement, policy: dict,
+           cross: dict | None = None) -> dict:
+    """把 L2 判定（以及可选的 L3 双路比对结果）并进 L1 评分卡。
+
+    L3 只**追加维度与 issue**，不参与加权（`weights` 里没有 cross_check 这个键，
+    所以逐项求和时自然忽略它）——它衡量的是"支撑强度"，不是"质量分"。
+    """
     weights = policy["weights"]
     metrics = dict(l1_card["metrics"])
     metrics["logic"] = judgement.logic
     issues = list(l1_card["issues"]) + list(judgement.issues)
+    if cross is not None:
+        # agreement 为 None 说明 L3 没跑成：**不写这个维度**，只留 warning issue。
+        # 评分卡里出现 cross_check=1.0 却是降级产生的，就是假绿。
+        if cross.get("agreement") is not None:
+            metrics["cross_check"] = cross["agreement"]
+        issues.extend(cross["issues"])
     score = round(sum(weights[key] * metrics[key] for key in weights), 3)
     threshold = float(policy["pass_threshold"])
     veto = policy["veto"]
     failed = (
         score < threshold
-        or min(metrics.values()) < float(veto["metric_floor"])
+        or min(metrics[k] for k in weights) < float(veto["metric_floor"])
         or (bool(veto["blocker_issue"]) and any(i["severity"] == "blocker" for i in issues))
     )
     card = {
@@ -293,10 +299,47 @@ class Verifier:
         logic 保持 1.0 —— 没做 L2 就承认没做，不臆造分数。
         """
         l1_card = l1_check(draft, evidence)
+
+        cross = None
+        if self.layers.get("cross_check", False):
+            # L3：对每条引用做双路复核。失败不抛异常——L3 是增强信号，
+            # 不能因为它挂掉就让整次验证失败（那是把附录当主程序的错）。
+            from src import cross_check as _cc
+
+            try:
+                report = _cc.cross_check(draft)
+                cross = report.to_dict()
+            except Exception as exc:  # noqa: BLE001
+                # issue 必须符合 contracts/scorecard.schema.json：
+                # required = section / reason / suggestion / target_node / severity，
+                # severity 只有 blocker | warning（没有 minor）。
+                # agreement 用 None 表示"没算出来"。绝不能填 1.0——
+                # 那等于把"没检查"说成"全通过"（A 在 #91 复审里指出）。
+                cross = {"checked": 0, "confirmed": 0, "agreement": None,
+                         "issues": [{
+                             "rule_id": "CROSS_CHECK_SKIPPED",
+                             "severity": "warning",
+                             "target_node": "write",
+                             "section": "（全篇）",
+                             "reason": f"L3 未能执行：{type(exc).__name__}",
+                             "suggestion": "检查语料索引是否可用；L3 是增强层，未执行不代表引用有问题",
+                         }]}
+
         if not self.layers.get("llm_judge", True):
-            return l1_card
+            if cross is None:
+                return l1_card
+            # 只开 L1+L3：仍然要把 cross_check 维度并进去
+            merged = dict(l1_card)
+            metrics = dict(l1_card["metrics"])
+            if cross.get("agreement") is not None:
+                metrics["cross_check"] = cross["agreement"]
+            merged["metrics"] = metrics
+            merged["issues"] = list(l1_card["issues"]) + cross["issues"]
+            validator(SCORECARD_SCHEMA).validate(merged)
+            return merged
+
         judgement = self.judge(draft, evidence, judge_fn)
-        return _merge(l1_card, judgement, _policy())
+        return _merge(l1_card, judgement, _policy(), cross)
 
 
 _default: Verifier | None = None

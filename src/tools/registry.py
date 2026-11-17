@@ -101,17 +101,47 @@ _TOOLS: tuple[ToolSpec, ...] = (
 
 TOOLS: dict[str, ToolSpec] = {t.name: t for t in _TOOLS}
 
+# 外部工具（MCP 接入）走独立字典：静态 8 个工具的名字仍然冻结，
+# 外部工具用 `mcp:<server>:<tool>` 命名空间，避免与内置重名。
+_EXTERNAL: dict[str, ToolSpec] = {}
+
+MCP_PREFIX = "mcp:"
+
+
+def register_external(spec: ToolSpec) -> None:
+    """注册一个外部（MCP）工具。
+
+    约束：
+      1. 名字必须是 `mcp:` 前缀——外部工具不该占用内置命名；
+      2. 不得与已注册的名字冲突（重名会让"谁负责"变模糊）；
+      3. **默认按"可写"对待**（read_only=False），除非调用方显式声明只读。
+         保守方向：宁可让只读 Agent 用不了，也不让有副作用的工具被只读角色调用。
+    """
+    if not spec.name.startswith(MCP_PREFIX):
+        raise ValueError(f"外部工具名必须以 {MCP_PREFIX} 开头：{spec.name}")
+    if spec.name in TOOLS or spec.name in _EXTERNAL:
+        raise ValueError(f"工具名已存在，不能重复注册：{spec.name}")
+    _EXTERNAL[spec.name] = spec
+
+
+def unregister_external(name: str) -> None:
+    _EXTERNAL.pop(name, None)
+
+
+def external_tools() -> dict[str, ToolSpec]:
+    return dict(_EXTERNAL)
+
 
 def is_registered(name: str) -> bool:
-    """工具名是否已注册。"""
-    return name in TOOLS
+    """工具名是否已注册（含外部工具）。"""
+    return name in TOOLS or name in _EXTERNAL
 
 
 def list_tools() -> list[str]:
     """按字母序列出全部工具名（稳定输出，便于测试与 diff）。"""
-    return sorted(TOOLS)
+    return sorted([*TOOLS, *_EXTERNAL])
 
 
 def unknown_tools(names: list[str]) -> list[str]:
     """返回 `names` 中未注册的那些（保持输入顺序，便于定位是哪个角色写错了）。"""
-    return [n for n in names if n not in TOOLS]
+    return [n for n in names if not is_registered(n)]

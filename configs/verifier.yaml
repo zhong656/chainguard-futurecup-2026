@@ -22,13 +22,15 @@
 #               代码会直接拒绝启动，而不是让评分卡凭空填 1.0。
 #   llm_judge   L2 独立 Verifier Agent（温度须与 writer 不同）。可关闭：
 #               关掉时只返回 L1 评分卡，logic 维度保持 1.0（不做臆测）。
-#   cross_check L3 双路检索比对。**尚未实现**：设为 true 会抛
-#               VerifierConfigError —— 不能让一个没实现的层被配置"打开"
-#               然后静默忽略，那等于对外宣称了做不到的能力。
+#   cross_check L3 双路检索比对。**2026-11-14 已实现**（src/cross_check.py）：
+#               对每条引用分别走 bm25 单路与 vector 单路复核，两路都不命中
+#               则报 CROSS_CHECK_MISMATCH（severity=warning）。
 layers:
   rules: true
   llm_judge: true
-  cross_check: false   # L3 未实现；实现前必须保持 false
+  cross_check: true              # L3 已实现并默认开启（纯本地检索，零模型调用）
+                                 #   口径见下方 scorecard 段：cross_check 只观测，
+                                 #   不在 weights 内、不加权、不参与一票否决
 
 # scorecard：评分维度与权重（合计必须为 1.0）
 scorecard:
@@ -43,13 +45,13 @@ scorecard:
   convergence:                     # 收敛判据
     stop_if_no_gain_rounds: 2      # 连续两轮无提升即终止并给出原因
   veto:                            # 一票否决：加权分再高也不能掩盖硬伤
-    metric_floor: 0.60             # 任一维度 < 0.60 → verdict=fail
+    metric_floor: 0.60             # **仅 weights 内**某维 < 0.60 → verdict=fail（观测维度不受此限）
     blocker_issue: true            # 存在 severity=blocker 的 issue → verdict=fail
 
 # 计分口径（LoopController 与 verifier 提示词都按此实现）：
 #   score = Σ weights[k] × metrics[k]，结果保留 3 位小数
 #   verdict = fail 若 score < pass_threshold
-#           或 min(metrics[k]) < veto.metric_floor
+#           或 min(metrics[k] for k in weights) < veto.metric_floor
 #           或 issues 中存在 severity=blocker
 #   例：metrics 0.55/0.85/0.75/0.80/1.00 → score = 0.745 → fail
 #       （见 contracts/examples/scorecard.good.json）

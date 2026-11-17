@@ -70,7 +70,7 @@ def test_no_overclaim_in_intro(text):
     banned = ["三层验证全部", "全部实现", "100% 准确", "完全准确"]
     for phrase in banned:
         assert phrase not in text, f"简介里出现过度声明：{phrase}"
-    assert "L3" in text, "B 版必须写明 L3 未实现"
+    assert "L3" in text, "B 版必须写明 L3 的边界（只观测/不加权）"
 
 
 def test_version_a_has_no_l3_claim(version_a):

@@ -37,7 +37,8 @@ DIST = ROOT / "dist"
 # `.github` 也收：CI 配置与 PR/Issue 模板是"工程纪律"的直接证据，
 # 评审能看到门禁怎么配的；里面不含任何密钥。
 INCLUDE_DIRS = ("src", "scripts", "tests", "cases", "contracts", "configs",
-                "workflows", "agents", "knowledge", "web", "docs", ".github")
+                "workflows", "agents", "knowledge", "web", "docs", ".github",
+                "mcp_servers")
 INCLUDE_FILES = ("README.md", "requirements.txt", "Dockerfile", "docker-compose.yml",
                  ".dockerignore", ".gitignore", "Makefile", "SECURITY.md", "CONTRIBUTING.md")
 
