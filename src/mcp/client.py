@@ -30,6 +30,16 @@ PROTOCOL_VERSION = "2024-11-05"
 # 我们**只实现**这一版协议：服务器回别的版本时不能假装握手成功——
 # 版本不同意味着 capability 与字段语义都可能不同。
 SUPPORTED_PROTOCOL_VERSIONS: frozenset[str] = frozenset({PROTOCOL_VERSION})
+
+# MCP `InitializeResult` 的**必填字段**（规范原文要求）。
+# 列成常量有两个用处：实现按它逐项校验；测试按它生成负例，
+# 以后再漏字段会直接被"每个必填项都有负例"的测试抓到。
+REQUIRED_HANDSHAKE_FIELDS: tuple[str, ...] = (
+    "protocolVersion",
+    "capabilities",
+    "serverInfo.name",
+    "serverInfo.version",
+)
 ROOT = Path(__file__).resolve().parents[2]
 
 
@@ -159,6 +169,11 @@ class MCPClient:
         name = server_info.get("name")
         if not isinstance(name, str) or not name.strip():
             raise MCPError("initialize.serverInfo.name 缺失或为空，无法确认对端身份")
+        version = server_info.get("version")
+        if not isinstance(version, str) or not version.strip():
+            raise MCPError(
+                "initialize.serverInfo.version 缺失或为空，无法确认对端实现版本"
+            )
 
         self.protocol_version = protocol_version
         self.server_info = server_info

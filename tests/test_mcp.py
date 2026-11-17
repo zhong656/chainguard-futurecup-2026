@@ -293,6 +293,9 @@ BAD_HANDSHAKES = {
     "server_info_list": _GOOD.replace('{"name": "fake", "version": "1.0"}', "[]"),
     "no_server_info": _GOOD.replace(', "serverInfo": {"name": "fake", "version": "1.0"}', ""),
     "empty_server_name": _GOOD.replace('"name": "fake"', '"name": ""'),
+    "no_server_version": _GOOD.replace(', "version": "1.0"', ""),
+    "empty_server_version": _GOOD.replace('"version": "1.0"', '"version": ""'),
+    "server_version_int": _GOOD.replace('"version": "1.0"', '"version": 1'),
 }
 
 
@@ -325,3 +328,38 @@ def test_good_handshake_still_accepted(tmp_path):
     with launch(str(script), timeout=3.0) as client:
         assert client.protocol_version == "2024-11-05"
         assert client.server_info.get("name") == "fake"
+
+def test_every_required_handshake_field_is_validated(tmp_path):
+    """系统性保证：`REQUIRED_HANDSHAKE_FIELDS` 里**每一项**缺失都必须被拒。
+
+    这条测试是防"逐个补洞"的：以后协议多一个必填字段，
+    只要加进常量，这里就会要求它也真的被校验。
+    """
+    from src.mcp.client import REQUIRED_HANDSHAKE_FIELDS
+
+    def strip_field(payload_json: str, dotted: str) -> str:
+        import json
+
+        data = json.loads(payload_json)
+        parts = dotted.split(".")
+        node = data
+        for part in parts[:-1]:
+            node = node[part]
+        node.pop(parts[-1], None)
+        return json.dumps(data, ensure_ascii=False)
+
+    for field in REQUIRED_HANDSHAKE_FIELDS:
+        payload = strip_field(_GOOD, field)
+        script = tmp_path / f"missing_{field.replace('.', '_')}.py"
+        script.write_text(
+            CUSTOM_RESULT_SERVER.replace("HANDMADE_RESULT", payload), encoding="utf-8"
+        )
+        client = launch(str(script), timeout=3.0)
+        try:
+            client.start()
+        except MCPError:
+            assert client._proc is None, f"{field} 缺失时子进程未回收"
+        else:
+            pytest.fail(f"缺 {field} 却握手成功了——该字段没有被校验")
+        finally:
+            client.close()
