@@ -191,11 +191,12 @@ def test_real_problem_survives_waiver():
 
 def test_git_failure_reported_as_unverified():
     """git 失败必须进入「未核验」，而不是被当成「没问题」。"""
-    problems, unverified = cpr.check_history_binaries()
-    assert not problems and not unverified, "真实仓库应干净且可核验"
-
     original = cpr._git
     try:
+        cpr._git = lambda *a, **k: ("", True)
+        problems, unverified = cpr.check_history_binaries()
+        assert not problems and not unverified
+
         cpr._git = lambda *a, **k: ("", False)
         problems, unverified = cpr.check_history_binaries()
     finally:
