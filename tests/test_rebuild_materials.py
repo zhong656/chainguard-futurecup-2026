@@ -256,22 +256,33 @@ def test_dirty_worktree_only_warns_in_readonly(monkeypatch, paths, capsys):
     assert "[WARN]" in out
 
 
-def test_dirty_detection_covers_untracked_source_py(monkeypatch, tmp_path):
-    """未跟踪但会被 import 的 .py 也算脏；运行时产物不算。"""
+def test_dirty_detection_covers_untracked_yaml(monkeypatch, tmp_path):
+    """未跟踪的 `agents/*.yaml` 也影响产物（Registry 会读），必须算脏。
+
+    旧实现只查 .py，这类配置文件会漏检——A 在 #94 复审里指出。
+    """
     repo = tmp_path / "r"
     repo.mkdir()
-    outputs = {"--untracked-files=no": "", "ls-files --others --exclude-standard":
-               "src/sneaky.py\noutputs/_vertical/a.json\ndocs/notes.md"}
+    fake = {"--untracked-files=no": "",
+            "ls-files --others --exclude-standard":
+            "agents/new_role.yaml\nconfigs/extra.yaml\nsrc/sneaky.py"}
 
-    def fake_git_output(repo_path, *args):
-        key = " ".join(args)
-        return outputs.get(key, "")
-
-    monkeypatch.setattr(rb, "git_output", fake_git_output)
+    monkeypatch.setattr(rb, "git_output",
+                        lambda repo_path, *args: fake.get(" ".join(args), ""))
     entries = rb.dirty_worktree_entries(repo)
-    assert any("sneaky.py" in e for e in entries)
-    assert not any("outputs/" in e for e in entries)
-    assert not any("notes.md" in e for e in entries)
+    assert any("agents/new_role.yaml" in e for e in entries)
+    assert any("configs/extra.yaml" in e for e in entries)
+    assert any("src/sneaky.py" in e for e in entries)
+
+
+def test_ignored_runtime_files_do_not_count(monkeypatch, tmp_path):
+    """被 .gitignore 忽略的运行产物不该出现（git 已用 --exclude-standard 过滤）。"""
+    repo = tmp_path / "r"
+    repo.mkdir()
+    fake = {"--untracked-files=no": "", "ls-files --others --exclude-standard": ""}
+    monkeypatch.setattr(rb, "git_output",
+                        lambda repo_path, *args: fake.get(" ".join(args), ""))
+    assert rb.dirty_worktree_entries(repo) == []
 
 
 def test_nonempty_out_dir_refused(monkeypatch, paths, capsys):
@@ -308,3 +319,62 @@ def test_empty_out_dir_allowed(monkeypatch, paths):
     paths["out"].mkdir()          # 存在但为空
     monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)
     assert rb.main(_args(paths, "--build")) == 3   # 通过了目录检查，停在 check
+
+# ── --force 的安全边界（A 在 #94 复审指出：可能误删仓库/成片）────
+def test_out_dir_equal_repo_refused(tmp_path):
+    repo = tmp_path / "repo"; repo.mkdir()
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_safe_out_dir(repo, repo, tmp_path / "mats")
+    assert "仓库本身" in str(exc.value)
+
+
+def test_out_dir_equal_materials_refused(tmp_path):
+    mats = tmp_path / "mats"; mats.mkdir()
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_safe_out_dir(mats, tmp_path / "repo", mats)
+    assert "成片目录本身" in str(exc.value)
+
+
+def test_out_dir_ancestor_of_repo_refused(tmp_path):
+    parent = tmp_path / "guard"
+    repo = parent / "weilaibei"; repo.mkdir(parents=True)
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_safe_out_dir(parent, repo, tmp_path / "mats")
+    assert "上级目录" in str(exc.value)
+
+
+def test_out_dir_inside_repo_refused(tmp_path):
+    repo = tmp_path / "repo"; repo.mkdir()
+    inside = repo / "outputs"; inside.mkdir()
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_safe_out_dir(inside, repo, tmp_path / "mats")
+    assert "仓库内部" in str(exc.value)
+
+
+def test_out_dir_git_repo_refused(tmp_path):
+    other = tmp_path / "other"; other.mkdir()
+    (other / ".git").mkdir()
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_safe_out_dir(other, tmp_path / "repo", tmp_path / "mats")
+    assert "git 仓库" in str(exc.value)
+
+
+def test_out_dir_sibling_is_allowed(tmp_path):
+    repo = tmp_path / "repo"; repo.mkdir()
+    mats = tmp_path / "mats"; mats.mkdir()
+    out = tmp_path / "out"
+    rb.ensure_safe_out_dir(out, repo, mats)   # 不抛异常即通过
+
+
+def test_force_does_not_delete_repo(monkeypatch, paths):
+    """--force + 误填 --out=仓库 → 必须拒绝，且仓库文件还在。"""
+    _stub_git(monkeypatch)
+    marker = paths["repo"] / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+
+    code = rb.main(["--repo", str(paths["repo"]),
+                    "--materials", str(paths["materials"]),
+                    "--out", str(paths["repo"]),
+                    "--build", "--allow-missing-l3", "--force"])
+    assert code == 1
+    assert marker.exists(), "仓库文件被 --force 删掉了"

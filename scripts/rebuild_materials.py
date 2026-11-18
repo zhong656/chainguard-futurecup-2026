@@ -151,11 +151,13 @@ def dirty_worktree_entries(repo: Path) -> list[str]:
     tracked = git_output(repo, "status", "--porcelain", "--untracked-files=no")
     entries.extend(line.strip() for line in tracked.splitlines() if line.strip())
 
+    # **任何**未被 git 跟踪的文件都算脏，不只是 .py：
+    # `agents/*.yaml`、`configs/*.yaml`、`docs/*.md` 都会进产物
+    # （AgentRegistry 读 agents、PDF 由 docs 正文生成）。
+    # 只查 .py 会漏掉这类配置——A 在 #94 复审里指出的正是这个。
     untracked = git_output(repo, "ls-files", "--others", "--exclude-standard")
-    code_dirs = ("src/", "scripts/", "mcp_servers/", "tests/")
     entries.extend(
-        f"?? {name}" for name in untracked.splitlines()
-        if name.strip().endswith(".py") and name.strip().startswith(code_dirs)
+        f"?? {name.strip()}" for name in untracked.splitlines() if name.strip()
     )
     return entries
 
@@ -168,6 +170,30 @@ def dirty_message(entries: list[str]) -> str:
         f"{preview}{more}\n"
         "请先提交或暂存（git stash）后重试。"
     )
+
+
+def ensure_safe_out_dir(out: Path, repo: Path, materials: Path) -> None:
+    """`--force` 会 `rmtree`，所以先确认目标不是仓库、成片目录或它们的祖先。
+
+    误填 `--out D:/weilaibei` 或 `--out D:/未来杯-ChainGuard/成片材料-*` 时，
+    一次 `--force` 就能把源码或成片整个删掉——这类错误不该靠人小心。
+    """
+    o = out.resolve()
+    r = repo.resolve()
+    m = materials.resolve()
+
+    if o == r:
+        raise StepError("输出目录不能是仓库本身（--force 会把仓库删掉）")
+    if o == m:
+        raise StepError("输出目录不能是成片目录本身（--force 会把成片删掉）")
+    if o in r.parents:
+        raise StepError(f"输出目录不能是仓库的上级目录：{o}（--force 会连带删除仓库）")
+    if o in m.parents:
+        raise StepError(f"输出目录不能是成片目录的上级目录：{o}（--force 会连带删除成片）")
+    if r in o.parents:
+        raise StepError(f"输出目录不能在仓库内部：{o}（会污染工作树）")
+    if (o / ".git").exists():
+        raise StepError(f"输出目录看起来是一个 git 仓库：{o}（拒绝删除）")
 
 
 def ensure_out_dir_clean(out: Path, *, force: bool) -> list[str]:
@@ -288,6 +314,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.build:
         try:
+            ensure_safe_out_dir(out, repo, materials)
             removed = ensure_out_dir_clean(out, force=args.force)
         except StepError as exc:
             print(f"  [FAIL] {exc}")
