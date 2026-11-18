@@ -53,7 +53,7 @@ scripts/check_video.py 的上下限同步改为 180/300 秒；边界用例包含
 
 ## 真实性与边界
 
-- 使用实际 HTTP API、Mock LLM、离线转述语料、实际检索与 L1/启发式 Mock L2；L3 未实现。
+- 使用实际 HTTP API、Mock LLM、离线转述语料、实际检索与 L1/启发式 Mock L2/L3 双路复核；L3 只观测不加权。
 - 同一次 run 的 SSE、落盘 trace.jsonl 与 delivery_artifact.trace_bundle 逐条一致。
 - R0/R1 评分来自本次 rounds.json，并关联同轮 verify end 的 event_id。
 - 保留失败轮次；不伪造历史草稿，不用字幕或前端分数改变 Trace 和节点颜色。

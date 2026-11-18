@@ -38,7 +38,7 @@
 > - 需要先 `git fetch origin`，否则 `origin/main` 是旧的；
 > - `wc -l` 是 Unix 工具，**Windows 用 Git Bash / WSL**，或改 PowerShell：
 >   `(git ls-tree -r --name-only origin/main).Count`；
-> - `gh pr list` 需要装 GitHub CLI（本机为 `D:\Tools\GitHubCLI\bin\gh.exe`）；
+> - `gh pr list` 需自行安装 GitHub CLI 并加入 PATH（`gh --version` 能跑即可；本仓库不假定任何机器特定路径）；
 > - `python scripts/check.py` 需要先装依赖，两条口径（装全依赖 / 未装可选依赖）的 skip 数不同。
 
 ## 二、拉代码之前先看这三条

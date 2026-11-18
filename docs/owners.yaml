@@ -55,6 +55,11 @@ directories:
   knowledge:
     owner: B
     backup: C
+  mcp_servers:
+    owner: B
+    backup: A
+    scope: MCP 服务器示例（自带最小实现，供评审与测试真连）
+    note: 只读工具演示；默认按可写注册，见 src/mcp/bridge.py
   src:
     owner: A
     backup: D
