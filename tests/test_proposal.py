@@ -69,8 +69,10 @@ def test_honest_limitations_present(text):
 
 
 def test_no_false_claims(text):
-    """禁止与事实冲突的表述。"""
-    forbidden = ("已实现 L3", "已接入 MCP", "高并发", "压测通过")
+    """已实现能力与已知限制表必须使用同一口径。"""
+    assert "**MCP 已接入**" in text
+    assert "| MCP | 已接入 stdio tools；" in text
+    forbidden = ("| MCP | 未接入 |", "高并发", "压测通过")
     hits = [w for w in forbidden if w in text]
     assert not hits, f"出现了与事实冲突的表述：{hits}"
 
