@@ -23,20 +23,20 @@ ChainGuard 不是"又一个聊天机器人"，而是一套 **Agent Harness（智
 
 | # | 赛题考察点 | 本项目实现 | 可提交证据 |
 | --- | --- | --- | --- |
-| 1 | 知识库定义与集成 | `KnowledgeHub`：声明式知识源注册、切片与向量化、元数据与溯源 ID、混合检索（向量 + BM25 + 重排）、引用强制回填 | `knowledge/*.yaml`、检索命中率报告、引用证据链 |
+| 1 | 知识库定义与集成 | `KnowledgeHub`：声明式知识源注册、切片与溯源 ID；本地模拟的 BM25 与向量双路检索经 RRF 融合，不依赖 embedding 或联网；引用强制回填 | `knowledge/*.yaml`、检索命中率报告、引用证据链 |
 | 2 | Agent 团队定义 | `AgentRegistry`：6 类角色以 YAML 声明（职责 / 工具白名单 / I/O Schema / 模型档位 / 超时重试），支持热加载与自定义角色 | `agents/*.yaml`、角色清单、热加载演示 |
 | 3 | 工作流编排 | DAG 引擎：节点 / 条件边 / 并行分支 / 子图 / 循环边，支持模板导入导出与前端可视化 | `workflows/industry_solution.yaml`、DAG 图、执行轨迹 |
-| 4 | 动态调度 | `Scheduler`：按复杂度分级路由模型、并发信号量、超时重试与熔断、Token 与成本预算、失败降级与断点续跑 | 调度策略说明、压测数据、故障注入录屏 |
+| 4 | 动态调度 | `Scheduler`：按复杂度分级路由模型、并发信号量、超时重试与熔断、Token 与成本预算、失败降级与断点续跑 | 调度策略说明、故障注入记录；并发压测尚未完成 |
 | 5 | 自我循环 Self-Loop | `LoopController`：评分卡未达阈值时生成**定位到段落**的修订指令并回退至指定节点，最多 3 轮，含收敛检测 | 多轮对比报告、分数收敛曲线、轮次日志 |
-| 6 | 结果验证与反馈优化 | 三层验证：规则验证器（引用 / 数值 / 章节 / Schema）+ 独立 Verifier Agent 交叉评审 + 双路检索比对；失败样本入反馈库驱动优化 | 评分报告、失败案例库、优化前后 A/B 对比 |
+| 6 | 结果验证与反馈优化 | 规则验证器 + 独立 Verifier Agent 评审；双路检索比对已接入 `cross_check`，仅观测、不加权、不否决；失败样本入反馈库 | 评分报告、失败案例库、双路比对结果 |
 | 附加 | 可运行平台系统 | FastAPI + Web 控制台 + Docker Compose 一键启动 + Trace 可重放 | 可运行仓库、启动录屏、本文档 |
-| 附加 | 完整技术方案与演示成果 | 项目书 + 架构文档 + 5–8 分钟演示视频 + 路演 PPT | `docs/提交材料清单.md` |
+| 附加 | 完整技术方案与演示成果 | 方案书 + 架构文档 + 3–5 分钟演示视频 + 路演 PPT | `docs/官方要求-2026.md` |
 
 ## 3. 5 分钟复现指南
 
-> ✅ **当前状态：可运行**。`python scripts/check.py` 全绿（251 项检查），
+> **当前状态：可运行**。`python scripts/check.py` 的实时结果以执行输出为准，
 > 命令行纵切与 HTTP 服务均可直接跑通，**Mock 模式不需要任何 API Key**。
-> 逐项能力与证据的对应关系见 `docs/HANDOFF.md` 顶部状态表。
+> 逐项能力与局限见 `docs/方案书-正文.md`，历史交接记录不能代替实时检查。
 
 ### 方式一：命令行纵切（最快，30 秒）
 
@@ -44,10 +44,10 @@ ChainGuard 不是"又一个聊天机器人"，而是一套 **Agent Harness（智
 python -m src.run --request "用机器视觉升级精密零件产线质检"
 ```
 
-会依次执行：混合检索（17 份语料）→ Mock 草稿 → **L1 规则 + L2 独立评审**评分 →
+会依次执行：本地模拟的混合检索（17 份语料）→ Mock 草稿 → **L1 规则 + L2 独立评审**评分（L3 双路比对仅观测）→
 若未达阈值则**定位到段落**定向回退重跑 `write → verify` → 导出交付包。
 
-产物落在 `outputs/_vertical/`，共 8 件：
+产物落在 `outputs/_vertical/`，共 9 件（含 2 张 SVG）：
 
 ```
 solution.md            正文
@@ -134,7 +134,7 @@ chainguard-futurecup-2026/
 │   └── reviewer.yaml
 ├── workflows/                   # 工作流模板
 │   └── industry_solution.yaml   # 主示范工作流
-├── src/                         # 后端实现（15 个模块，均已落地）
+├── src/                         # 后端实现
 ├── tests/                       # 单测 / 黄金用例 / 故障注入
 ├── docs/                        # 提交材料清单、逐日计划、架构文档
 └── .github/                     # PR 与 Issue 模板
@@ -166,15 +166,15 @@ chainguard-futurecup-2026/
 
 > 红线：不压到 11/20 深夜提交；11/19 完成全部材料，11/20 只做上传与复核。
 
-> **先读这里**：[交接公告](docs/HANDOFF.md) · [接口口径](docs/api.md) · [已定决定](docs/decisions.md) · [给 AI 的提示词](docs/AGENT-PROMPT.md) · [交付计划](docs/PLAN-DELIVERY.md) —— 当前状态、拉取方式、四个已踩过的坑
+> **相关文档**：[交接记录](docs/HANDOFF.md) · [接口口径](docs/api.md) · [已定决定](docs/decisions.md) · [给 AI 的提示词](docs/AGENT-PROMPT.md) · [交付计划](docs/PLAN-DELIVERY.md)。交接记录含历史快照，实时状态请以 `main` 和检查命令为准。
 
 ## 7. 协作与安全
 
 - 协作规范见 [CONTRIBUTING.md](CONTRIBUTING.md)：`main` 仅经 PR 合并、禁止 force push、PR 需人工复核。
 - 安全约定见 [SECURITY.md](SECURITY.md)：**凭据只从环境变量读取**，任何 Key 不得入库。
-- 仓库为 **private**，参赛前不开源、不发布到模板库、不开启 Pages。
+- 仓库已公开供评审查看与复现；未附 LICENSE，未开启 Pages。
 
 ## 8. 参赛声明
 
-本项目为 2026 未来杯参赛作品，赛期内暂不开源（仓库未附 LICENSE）。
-文档与演示材料中不出现校名、学院、导师姓名等可能影响评审公平的信息。
+本项目为 2026 未来杯参赛作品。仓库公开供评审复现，未附 LICENSE，不授予开源许可。
+公开仓库文档不写个人信息；提交 PPT 的封面字段按官方模板填写。
