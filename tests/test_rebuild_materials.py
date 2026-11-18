@@ -285,96 +285,80 @@ def test_ignored_runtime_files_do_not_count(monkeypatch, tmp_path):
     assert rb.dirty_worktree_entries(repo) == []
 
 
-def test_nonempty_out_dir_refused(monkeypatch, paths, capsys):
-    """旧输出目录里的文件可能被当成本轮产物——必须拒绝。"""
-    _stub_git(monkeypatch)
-    stale = paths["out"]
-    stale.mkdir()
-    (stale / "demo").mkdir()
-    (stale / "demo" / "old.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该开始构建"))
-
-    code = rb.main(_args(paths, "--build"))
-    out = capsys.readouterr().out
-    assert code == 1
-    assert "非空" in out
-    assert "--force" in out
-
-
-def test_force_clears_out_dir(monkeypatch, paths, capsys):
-    _stub_git(monkeypatch)
-    stale = paths["out"]
-    stale.mkdir()
-    (stale / "old.json").write_text("{}", encoding="utf-8")
-    monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)   # 让它在 check 处停下
-
-    code = rb.main(_args(paths, "--build", "--force"))
-    out = capsys.readouterr().out
-    assert "已按 --force 清空" in out
-    assert not (stale / "old.json").exists(), "旧文件必须被清掉"
-
-
 def test_empty_out_dir_allowed(monkeypatch, paths):
     _stub_git(monkeypatch)
     paths["out"].mkdir()          # 存在但为空
     monkeypatch.setattr(rb, "run_python", lambda repo, args: 3)
     assert rb.main(_args(paths, "--build")) == 3   # 通过了目录检查，停在 check
 
-# ── --force 的安全边界（A 在 #94 复审指出：可能误删仓库/成片）────
+# ── 输出目录：只接受新建空目录，脚本永不删除（A 在 #94 复审建议）──
 def test_out_dir_equal_repo_refused(tmp_path):
     repo = tmp_path / "repo"; repo.mkdir()
     with pytest.raises(rb.StepError) as exc:
-        rb.ensure_safe_out_dir(repo, repo, tmp_path / "mats")
+        rb.ensure_out_dir_usable(repo, repo, tmp_path / "mats")
     assert "仓库本身" in str(exc.value)
 
 
 def test_out_dir_equal_materials_refused(tmp_path):
     mats = tmp_path / "mats"; mats.mkdir()
     with pytest.raises(rb.StepError) as exc:
-        rb.ensure_safe_out_dir(mats, tmp_path / "repo", mats)
+        rb.ensure_out_dir_usable(mats, tmp_path / "repo", mats)
     assert "成片目录本身" in str(exc.value)
-
-
-def test_out_dir_ancestor_of_repo_refused(tmp_path):
-    parent = tmp_path / "guard"
-    repo = parent / "weilaibei"; repo.mkdir(parents=True)
-    with pytest.raises(rb.StepError) as exc:
-        rb.ensure_safe_out_dir(parent, repo, tmp_path / "mats")
-    assert "上级目录" in str(exc.value)
 
 
 def test_out_dir_inside_repo_refused(tmp_path):
     repo = tmp_path / "repo"; repo.mkdir()
     inside = repo / "outputs"; inside.mkdir()
     with pytest.raises(rb.StepError) as exc:
-        rb.ensure_safe_out_dir(inside, repo, tmp_path / "mats")
+        rb.ensure_out_dir_usable(inside, repo, tmp_path / "mats")
     assert "仓库内部" in str(exc.value)
 
 
-def test_out_dir_git_repo_refused(tmp_path):
-    other = tmp_path / "other"; other.mkdir()
-    (other / ".git").mkdir()
-    with pytest.raises(rb.StepError) as exc:
-        rb.ensure_safe_out_dir(other, tmp_path / "repo", tmp_path / "mats")
-    assert "git 仓库" in str(exc.value)
-
-
-def test_out_dir_sibling_is_allowed(tmp_path):
-    repo = tmp_path / "repo"; repo.mkdir()
+def test_out_dir_inside_materials_refused(tmp_path):
     mats = tmp_path / "mats"; mats.mkdir()
-    out = tmp_path / "out"
-    rb.ensure_safe_out_dir(out, repo, mats)   # 不抛异常即通过
+    inside = mats / "pkg"; inside.mkdir()
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_out_dir_usable(inside, tmp_path / "repo", mats)
+    assert "成片目录内部" in str(exc.value)
 
 
-def test_force_does_not_delete_repo(monkeypatch, paths):
-    """--force + 误填 --out=仓库 → 必须拒绝，且仓库文件还在。"""
+def test_new_out_dir_allowed(tmp_path):
+    rb.ensure_out_dir_usable(tmp_path / "fresh", tmp_path / "repo", tmp_path / "mats")
+
+
+def test_empty_out_dir_allowed(tmp_path):
+    out = tmp_path / "empty"; out.mkdir()
+    rb.ensure_out_dir_usable(out, tmp_path / "repo", tmp_path / "mats")
+
+
+def test_nonempty_out_dir_refused_without_deleting(tmp_path):
+    """非空目录必须拒绝，且**里面任何东西都不能被删掉**。"""
+    out = tmp_path / "old"; out.mkdir()
+    keeper = out / "keep.txt"
+    keeper.write_text("keep", encoding="utf-8")
+
+    with pytest.raises(rb.StepError) as exc:
+        rb.ensure_out_dir_usable(out, tmp_path / "repo", tmp_path / "mats")
+    assert "非空" in str(exc.value)
+    assert keeper.exists(), "拒绝时不许删除任何文件"
+
+
+def test_no_force_flag_exists():
+    """`--force` 已移除——存在即回退。"""
+    import inspect
+
+    src = inspect.getsource(rb.main)
+    assert "--force" not in src
+    assert "rmtree" not in inspect.getsource(rb)
+
+
+def test_build_refuses_nonempty_out_and_keeps_files(monkeypatch, paths):
     _stub_git(monkeypatch)
-    marker = paths["repo"] / "keep.txt"
-    marker.write_text("keep", encoding="utf-8")
+    stale = paths["out"]; stale.mkdir()
+    keeper = stale / "old.json"
+    keeper.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(rb, "run_python", lambda repo, args: pytest.fail("不该开始构建"))
 
-    code = rb.main(["--repo", str(paths["repo"]),
-                    "--materials", str(paths["materials"]),
-                    "--out", str(paths["repo"]),
-                    "--build", "--allow-missing-l3", "--force"])
+    code = rb.main(_args(paths, "--build"))
     assert code == 1
-    assert marker.exists(), "仓库文件被 --force 删掉了"
+    assert keeper.exists()

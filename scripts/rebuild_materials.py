@@ -172,51 +172,35 @@ def dirty_message(entries: list[str]) -> str:
     )
 
 
-def ensure_safe_out_dir(out: Path, repo: Path, materials: Path) -> None:
-    """`--force` 会 `rmtree`，所以先确认目标不是仓库、成片目录或它们的祖先。
+def ensure_out_dir_usable(out: Path, repo: Path, materials: Path) -> None:
+    """输出目录必须**可写且为空**；本脚本**永不删除**任何东西。
 
-    误填 `--out D:/weilaibei` 或 `--out D:/未来杯-ChainGuard/成片材料-*` 时，
-    一次 `--force` 就能把源码或成片整个删掉——这类错误不该靠人小心。
+    为什么不做 `--force` 清空（A 在 #94 复审里的建议）：
+      1. 任何"清空"都存在误填路径导致误删的风险（比如别的盘符根目录）；
+      2. 清空通常发生在输入校验与 `check.py` 之前——一次失败就跑掉了旧产物。
+    直接要求"新建的空目录"，两条风险同时消失：没有删除动作，就没有误删。
+
+    这里只做**位置**校验，防的是把材料写进仓库或成片目录（污染/覆盖源材料），
+    与删除无关。
     """
-    o = out.resolve()
-    r = repo.resolve()
-    m = materials.resolve()
-
+    o, r, m = out.resolve(), repo.resolve(), materials.resolve()
     if o == r:
-        raise StepError("输出目录不能是仓库本身（--force 会把仓库删掉）")
+        raise StepError("输出目录不能是仓库本身")
     if o == m:
-        raise StepError("输出目录不能是成片目录本身（--force 会把成片删掉）")
-    if o in r.parents:
-        raise StepError(f"输出目录不能是仓库的上级目录：{o}（--force 会连带删除仓库）")
-    if o in m.parents:
-        raise StepError(f"输出目录不能是成片目录的上级目录：{o}（--force 会连带删除成片）")
+        raise StepError("输出目录不能是成片目录本身")
     if r in o.parents:
         raise StepError(f"输出目录不能在仓库内部：{o}（会污染工作树）")
-    if (o / ".git").exists():
-        raise StepError(f"输出目录看起来是一个 git 仓库：{o}（拒绝删除）")
-
-
-def ensure_out_dir_clean(out: Path, *, force: bool) -> list[str]:
-    """输出目录必须是空的；已有内容一律拒绝，除非显式 force。
-
-    否则旧文件会混进本轮产物——产物件数可能被旧文件凑够，
-    目录里也会同时躺着两轮的东西，事后无法判断哪份是本次构建的。
-    返回被清掉的条目（force 时）。
-    """
-    if not out.exists():
-        return []
-    entries = sorted(p.name for p in out.iterdir())
-    if not entries:
-        return []
-    if not force:
-        listing = "、".join(entries[:6]) + ("…" if len(entries) > 6 else "")
-        raise StepError(
-            f"输出目录非空（{len(entries)} 项：{listing}）。\n"
-            "旧文件会被当成本轮产物。请换一个空目录，或加 --force 清空该目录。"
-        )
-    removed = list(entries)
-    shutil.rmtree(out)
-    return removed
+    if m in o.parents:
+        raise StepError(f"输出目录不能在成片目录内部：{o}（会与源材料混在一起）")
+    if o.exists():
+        existing = sorted(p.name for p in o.iterdir())
+        if existing:
+            listing = "、".join(existing[:6]) + ("…" if len(existing) > 6 else "")
+            raise StepError(
+                f"输出目录非空（{len(existing)} 项：{listing}）。\n"
+                "本脚本不会删除任何文件。请换一个**新建的空目录**后重试：\n"
+                f"    python scripts/rebuild_materials.py ... --out {out}-20261119"
+            )
 
 
 def measure_pdf(path: Path) -> tuple[int, int]:
@@ -268,8 +252,6 @@ def main(argv: list[str] | None = None) -> int:
                     help="真正写文件（会跑 check.py，它会写 outputs/_vertical）")
     ap.add_argument("--allow-missing-l3", action="store_true",
                     help="目标提交没有 L3/MCP 也继续（会记入 summary）")
-    ap.add_argument("--force", action="store_true",
-                    help="输出目录非空时先清空（否则拒绝，避免旧文件混入本轮产物）")
     args = ap.parse_args(argv)
 
     repo = Path(args.repo).resolve()
@@ -314,13 +296,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.build:
         try:
-            ensure_safe_out_dir(out, repo, materials)
-            removed = ensure_out_dir_clean(out, force=args.force)
+            ensure_out_dir_usable(out, repo, materials)
         except StepError as exc:
             print(f"  [FAIL] {exc}")
             return 1
-        if removed:
-            print(f"  [OK] 已按 --force 清空输出目录（移除 {len(removed)} 项旧文件）")
 
     zip_path = materials / "D组成果交付包_20261112.zip"
     ppt = materials / "路演PPT_v10.pptx"
